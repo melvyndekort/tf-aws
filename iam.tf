@@ -117,8 +117,8 @@ resource "aws_iam_role_policy_attachment" "finance_usage_policy" {
 
 
 
-# DEPLOYER ROLE
-data "aws_iam_policy_document" "deployer_assume" {
+# GITHUB ACTIONS ROLE
+data "aws_iam_policy_document" "github_actions_assume" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
 
@@ -128,21 +128,32 @@ data "aws_iam_policy_document" "deployer_assume" {
     }
 
     condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:melvyndekort/tf-aws:ref:refs/heads/main"]
+    }
 
-      values = ["repo:melvyndekort/*"]
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:repository"
+      values   = ["melvyndekort/tf-aws"]
     }
   }
 }
 
-resource "aws_iam_role" "deployer" {
-  name               = "deployer"
+resource "aws_iam_role" "github_actions_tf_aws" {
+  name               = "github-actions-tf-aws"
   path               = "/external/"
-  assume_role_policy = data.aws_iam_policy_document.deployer_assume.json
+  assume_role_policy = data.aws_iam_policy_document.github_actions_assume.json
 }
 
-data "aws_iam_policy_document" "deployer" {
+data "aws_iam_policy_document" "github_actions" {
   statement {
     actions = [
       "acm:*",
@@ -168,9 +179,7 @@ data "aws_iam_policy_document" "deployer" {
       "ssm:*",
     ]
 
-    resources = [
-      "*"
-    ]
+    resources = ["*"]
   }
 
   statement {
@@ -189,13 +198,13 @@ data "aws_iam_policy_document" "deployer" {
   }
 }
 
-resource "aws_iam_role_policy" "deployer" {
-  role   = aws_iam_role.deployer.name
-  policy = data.aws_iam_policy_document.deployer.json
+resource "aws_iam_role_policy" "github_actions" {
+  role   = aws_iam_role.github_actions_tf_aws.name
+  policy = data.aws_iam_policy_document.github_actions.json
 }
 
-resource "aws_iam_role_policy" "deployer_ec2_deny" {
-  role   = aws_iam_role.deployer.name
+resource "aws_iam_role_policy" "github_actions_ec2_deny" {
+  role   = aws_iam_role.github_actions_tf_aws.name
   policy = data.aws_iam_policy_document.ec2_deny.json
 }
 

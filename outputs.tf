@@ -77,10 +77,10 @@ output "access_logs_bucket" {
   value = aws_s3_bucket.access_logs.id
 }
 
-output "deployer_role_arn" {
-  value = aws_iam_role.deployer.arn
-}
-
 output "cloudfront_function_no_index_arn" {
   value = aws_cloudfront_function.no_index.arn
+}
+
+output "github_actions_role_arn" {
+  value = aws_iam_role.github_actions_tf_aws.arn
 }

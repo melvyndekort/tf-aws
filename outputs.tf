@@ -23,7 +23,7 @@ output "melvyn_access_key_id" {
 }
 
 output "melvyn_secret_access_key" {
-  value = aws_iam_access_key.melvyn.secret
+  value     = aws_iam_access_key.melvyn.secret
   sensitive = true
 }
 
@@ -36,7 +36,7 @@ output "lmbackup_access_key_id" {
 }
 
 output "lmbackup_secret_access_key" {
-  value = aws_iam_access_key.lmbackup.secret
+  value     = aws_iam_access_key.lmbackup.secret
   sensitive = true
 }
 
@@ -49,7 +49,7 @@ output "homeassistant_access_key_id" {
 }
 
 output "homeassistant_secret_access_key" {
-  value = aws_iam_access_key.homeassistant.secret
+  value     = aws_iam_access_key.homeassistant.secret
   sensitive = true
 }
 

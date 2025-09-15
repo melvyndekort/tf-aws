@@ -147,54 +147,9 @@ resource "aws_iam_role" "github_actions_tf_aws" {
   assume_role_policy = data.aws_iam_policy_document.github_actions_assume.json
 }
 
-data "aws_iam_policy_document" "github_actions" {
-  statement {
-    actions = [
-      "acm:*",
-      "apigateway:*",
-      "autoscaling:*",
-      "cloudfront:*",
-      "cloudwatch:*",
-      "codebuild:*",
-      "codestar-notifications:*",
-      "cognito:*",
-      "cognito-idp:*",
-      "ec2:*",
-      "ecr:*",
-      "ecs:*",
-      "events:*",
-      "iam:*",
-      "lambda:*",
-      "logs:*",
-      "pipes:*",
-      "s3:*",
-      "sns:*",
-      "sqs:*",
-      "ssm:*",
-    ]
-
-    resources = ["*"]
-  }
-
-  statement {
-    actions = [
-      "kms:DescribeKey",
-      "kms:GenerateDataKey",
-      "kms:Decrypt",
-      "kms:Encrypt",
-      "kms:CreateGrant",
-    ]
-
-    resources = [
-      aws_kms_key.generic.arn,
-      data.aws_kms_key.default_s3.arn,
-    ]
-  }
-}
-
-resource "aws_iam_role_policy" "github_actions" {
-  role   = aws_iam_role.github_actions_tf_aws.name
-  policy = data.aws_iam_policy_document.github_actions.json
+resource "aws_iam_role_policy_attachment" "github_actions_admin" {
+  role       = aws_iam_role.github_actions_tf_aws.name
+  policy_arn = data.aws_iam_policy.admin.arn
 }
 
 resource "aws_iam_role_policy" "github_actions_ec2_deny" {

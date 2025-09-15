@@ -42,7 +42,7 @@ data "aws_iam_policy_document" "kms_generic" {
     resources = ["*"]
 
     principals {
-      type        = "AWS"
+      type = "AWS"
       identifiers = [
         aws_iam_user.lmbackup.arn,
         aws_iam_user.homeassistant.arn,

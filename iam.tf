@@ -19,7 +19,7 @@ data "aws_iam_policy_document" "mfa_assume" {
     ]
 
     principals {
-      type        = "AWS"
+      type = "AWS"
       identifiers = [
         aws_iam_user.melvyn.arn
       ]
@@ -134,15 +134,9 @@ data "aws_iam_policy_document" "github_actions_assume" {
     }
 
     condition {
-      test     = "StringLike"
+      test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       values   = ["repo:melvyndekort/tf-aws:ref:refs/heads/main"]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:repository"
-      values   = ["melvyndekort/tf-aws"]
     }
   }
 }
@@ -212,7 +206,7 @@ resource "aws_iam_role_policy" "github_actions_ec2_deny" {
 
 # HOME ASSISTANT USER
 resource "aws_iam_user_policy_attachment" "homeassistant_sns" {
-  user = aws_iam_user.homeassistant.name
+  user       = aws_iam_user.homeassistant.name
   policy_arn = data.aws_iam_policy.sns.arn
 }
 
@@ -230,6 +224,6 @@ data "aws_iam_policy_document" "homeassistant" {
 }
 
 resource "aws_iam_user_policy" "homeassistant" {
-  user = aws_iam_user.homeassistant.name
+  user   = aws_iam_user.homeassistant.name
   policy = data.aws_iam_policy_document.homeassistant.json
 }

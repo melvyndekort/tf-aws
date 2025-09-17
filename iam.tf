@@ -9,8 +9,6 @@ resource "aws_iam_account_password_policy" "strict" {
   allow_users_to_change_password = true
 }
 
-
-
 # MFA ASSUME
 data "aws_iam_policy_document" "mfa_assume" {
   statement {
@@ -36,8 +34,6 @@ data "aws_iam_policy_document" "mfa_assume" {
   }
 }
 
-
-
 # AWS MANAGED POLICIES
 data "aws_iam_policy" "admin" {
   name = "AdministratorAccess"
@@ -54,8 +50,6 @@ data "aws_iam_policy" "account_usage_report" {
 data "aws_iam_policy" "sns" {
   name = "AmazonSNSFullAccess"
 }
-
-
 
 # CUSTOM POLICIES
 data "aws_iam_policy_document" "ec2_deny" {
@@ -79,8 +73,6 @@ data "aws_iam_policy_document" "ec2_deny" {
   }
 }
 
-
-
 # ADMIN ROLE
 resource "aws_iam_role" "admin" {
   name               = "AdminRole"
@@ -97,8 +89,6 @@ resource "aws_iam_role_policy" "admin_ec2_deny" {
   policy = data.aws_iam_policy_document.ec2_deny.json
 }
 
-
-
 # FINANCE ROLE
 resource "aws_iam_role" "finance" {
   name               = "FinanceRole"
@@ -114,50 +104,6 @@ resource "aws_iam_role_policy_attachment" "finance_usage_policy" {
   role       = aws_iam_role.finance.name
   policy_arn = data.aws_iam_policy.account_usage_report.arn
 }
-
-
-
-# GITHUB ACTIONS ROLE
-data "aws_iam_policy_document" "github_actions_assume" {
-  statement {
-    actions = ["sts:AssumeRoleWithWebIdentity"]
-
-    principals {
-      type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:aud"
-      values   = ["sts.amazonaws.com"]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:melvyndekort/tf-aws:ref:refs/heads/main"]
-    }
-  }
-}
-
-resource "aws_iam_role" "github_actions_tf_aws" {
-  name               = "github-actions-tf-aws"
-  path               = "/external/"
-  assume_role_policy = data.aws_iam_policy_document.github_actions_assume.json
-}
-
-resource "aws_iam_role_policy_attachment" "github_actions_admin" {
-  role       = aws_iam_role.github_actions_tf_aws.name
-  policy_arn = data.aws_iam_policy.admin.arn
-}
-
-resource "aws_iam_role_policy" "github_actions_ec2_deny" {
-  role   = aws_iam_role.github_actions_tf_aws.name
-  policy = data.aws_iam_policy_document.ec2_deny.json
-}
-
-
 
 # HOME ASSISTANT USER
 resource "aws_iam_user_policy_attachment" "homeassistant_sns" {

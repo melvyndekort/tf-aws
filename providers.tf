@@ -12,9 +12,17 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.0"
+    }
   }
 }
 
 provider "aws" {
   region = "eu-west-1"
+}
+
+provider "cloudflare" {
+  api_token = data.terraform_remote_state.tf_cloudflare.outputs.api_token_tf_aws
 }

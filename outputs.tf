@@ -92,3 +92,7 @@ output "ecs_cluster_arn" {
 output "ecs_loggroup_arn" {
   value = aws_cloudwatch_log_group.ecs_default.arn
 }
+
+output "api_mdekort_domain_name" {
+  value = aws_api_gateway_domain_name.api.domain_name
+}

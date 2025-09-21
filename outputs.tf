@@ -81,10 +81,6 @@ output "cloudfront_function_no_index_arn" {
   value = aws_cloudfront_function.no_index.arn
 }
 
-output "github_actions_role_arn" {
-  value = aws_iam_role.github_actions_tf_aws.arn
-}
-
 output "ecs_cluster_arn" {
   value = aws_ecs_cluster.default.arn
 }

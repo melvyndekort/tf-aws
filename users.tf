@@ -4,10 +4,6 @@ resource "aws_iam_user" "melvyn" {
   path = "/"
 }
 
-resource "aws_iam_access_key" "melvyn" {
-  user = aws_iam_user.melvyn.name
-}
-
 resource "aws_iam_user_login_profile" "melvyn" {
   user            = aws_iam_user.melvyn.name
   password_length = 40

@@ -10,7 +10,7 @@ resource "aws_iam_account_password_policy" "strict" {
 }
 
 # MFA ASSUME
-data "aws_iam_policy_document" "mfa_assume" {
+data "aws_iam_policy_document" "multi_assume" {
   statement {
     actions = [
       "sts:AssumeRole",
@@ -26,9 +26,21 @@ data "aws_iam_policy_document" "mfa_assume" {
     condition {
       test     = "BoolIfExists"
       variable = "aws:MultiFactorAuthPresent"
+      values   = ["true"]
+    }
+  }
 
-      values = [
-        "true",
+  statement {
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession",
+      "sts:SetSourceIdentity",
+    ]
+
+    principals {
+      type = "AWS"
+      identifiers = [
+        aws_iam_role.yubikey_role.arn
       ]
     }
   }
@@ -76,7 +88,8 @@ data "aws_iam_policy_document" "ec2_deny" {
 # ADMIN ROLE
 resource "aws_iam_role" "admin" {
   name               = "AdminRole"
-  assume_role_policy = data.aws_iam_policy_document.mfa_assume.json
+  description        = "Admin role with Yubikey access"
+  assume_role_policy = data.aws_iam_policy_document.multi_assume.json
 }
 
 resource "aws_iam_role_policy_attachment" "admin_policy" {
@@ -92,7 +105,8 @@ resource "aws_iam_role_policy" "admin_ec2_deny" {
 # FINANCE ROLE
 resource "aws_iam_role" "finance" {
   name               = "FinanceRole"
-  assume_role_policy = data.aws_iam_policy_document.mfa_assume.json
+  description        = "Finance role with Yubikey access"
+  assume_role_policy = data.aws_iam_policy_document.multi_assume.json
 }
 
 resource "aws_iam_role_policy_attachment" "finance_billing_policy" {

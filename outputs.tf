@@ -14,19 +14,6 @@ output "eice_security_group_id" {
   value = aws_security_group.eice.id
 }
 
-output "melvyn_password" {
-  value = aws_iam_user_login_profile.melvyn.encrypted_password
-}
-
-output "melvyn_access_key_id" {
-  value = aws_iam_access_key.melvyn.id
-}
-
-output "melvyn_secret_access_key" {
-  value     = aws_iam_access_key.melvyn.secret
-  sensitive = true
-}
-
 output "lmbackup_name" {
   value = aws_iam_user.lmbackup.name
 }
@@ -91,4 +78,16 @@ output "ecs_loggroup_arn" {
 
 output "api_mdekort_domain_name" {
   value = aws_api_gateway_domain_name.api.domain_name
+}
+
+output "rolesanywhere_trust_anchor_arn" {
+  value = aws_rolesanywhere_trust_anchor.yubikey_ca.arn
+}
+
+output "rolesanywhere_profile_arn" {
+  value = aws_rolesanywhere_profile.yubikey_profile.arn
+}
+
+output "rolesanywhere_role_arn" {
+  value = aws_iam_role.yubikey_role.arn
 }

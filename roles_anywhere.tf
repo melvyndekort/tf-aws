@@ -25,6 +25,12 @@ data "aws_iam_policy_document" "rolesanywhere_assume" {
         "rolesanywhere.amazonaws.com"
       ]
     }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:PrincipalTag/x509Subject/OU"
+      values   = ["MelvynYubikey"]
+    }
   }
 }
 

@@ -1,3 +1,8 @@
+output "notifications_topic_arn" {
+  description = "ARN of the SNS topic for AWS notifications"
+  value       = aws_sns_topic.notifications.arn
+}
+
 output "vpc_id" {
   value = module.vpc.vpc_id
 }

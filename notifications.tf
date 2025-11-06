@@ -45,8 +45,8 @@ resource "aws_cloudwatch_event_rule" "aws_health" {
   description = "Forward AWS Health events to notifications"
 
   event_pattern = jsonencode({
-    "source": ["aws.health"],
-    "detail-type": ["AWS Health Event"]
+    "source" : ["aws.health"],
+    "detail-type" : ["AWS Health Event"]
   })
 }
 
@@ -63,8 +63,8 @@ resource "aws_cloudwatch_event_rule" "ecs_task_state" {
   description = "Forward ECS task state changes to notifications"
 
   event_pattern = jsonencode({
-    "source": ["aws.ecs"],
-    "detail-type": ["ECS Task State Change"]
+    "source" : ["aws.ecs"],
+    "detail-type" : ["ECS Task State Change"]
   })
 }
 
@@ -81,8 +81,8 @@ resource "aws_cloudwatch_event_rule" "budget_alerts" {
   description = "Forward AWS Budget alerts to notifications"
 
   event_pattern = jsonencode({
-    "source": ["aws.budgets"],
-    "detail-type": ["Budget Alert"]
+    "source" : ["aws.budgets"],
+    "detail-type" : ["Budget Alert"]
   })
 }
 
@@ -99,11 +99,11 @@ resource "aws_cloudwatch_event_rule" "cloudwatch_alarms" {
   description = "Forward CloudWatch alarms to notifications"
 
   event_pattern = jsonencode({
-    "source": ["aws.cloudwatch"],
-    "detail-type": ["CloudWatch Alarm State Change"],
-    "detail": {
-      "state": {
-        "value": ["ALARM"]
+    "source" : ["aws.cloudwatch"],
+    "detail-type" : ["CloudWatch Alarm State Change"],
+    "detail" : {
+      "state" : {
+        "value" : ["ALARM"]
       }
     }
   })
@@ -122,10 +122,10 @@ resource "aws_cloudwatch_event_rule" "ec2_state_changes" {
   description = "Forward EC2 instance state changes to notifications"
 
   event_pattern = jsonencode({
-    "source": ["aws.ec2"],
-    "detail-type": ["EC2 Instance State-change Notification"],
-    "detail": {
-      "state": ["stopped", "terminated", "stopping", "terminating"]
+    "source" : ["aws.ec2"],
+    "detail-type" : ["EC2 Instance State-change Notification"],
+    "detail" : {
+      "state" : ["stopped", "terminated", "stopping", "terminating"]
     }
   })
 }

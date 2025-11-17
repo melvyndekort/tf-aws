@@ -68,6 +68,30 @@ resource "aws_cloudwatch_event_target" "security_group_changes" {
   role_arn  = aws_iam_role.eventbridge_notifications.arn
 }
 
+# Human role assumptions (including Roles Anywhere)
+resource "aws_cloudwatch_event_rule" "human_role_assumptions" {
+  name        = "human-role-assumptions-notifications"
+  description = "Alert on human role assumptions (excludes automated systems)"
+
+  event_pattern = jsonencode({
+    "source" : ["aws.sts"],
+    "detail-type" : ["AWS API Call via CloudTrail"],
+    "detail" : {
+      "eventName" : ["AssumeRole", "AssumeRoleWithWebIdentity"],
+      "userIdentity" : {
+        "type" : ["IAMUser", "SAMLUser", "WebIdentityUser", "Unknown"]
+      }
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "human_role_assumptions" {
+  rule      = aws_cloudwatch_event_rule.human_role_assumptions.name
+  target_id = "NotificationsHumanAssumeTarget"
+  arn       = aws_sns_topic.notifications.arn
+  role_arn  = aws_iam_role.eventbridge_notifications.arn
+}
+
 # S3 bucket policy changes
 resource "aws_cloudwatch_event_rule" "s3_policy_changes" {
   name        = "s3-policy-changes-notifications"

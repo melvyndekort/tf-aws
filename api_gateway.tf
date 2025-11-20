@@ -1,5 +1,5 @@
 resource "aws_acm_certificate" "api" {
-  domain_name       = "api.mdekort.nl"
+  domain_name       = var.api_domain
   validation_method = "DNS"
 
   lifecycle {

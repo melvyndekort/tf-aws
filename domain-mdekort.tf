@@ -3,7 +3,7 @@ locals {
     contact_type   = "PERSON"
     first_name     = "Melvyn"
     last_name      = "de Kort"
-    email          = "melvyn@mdekort.nl"
+    email          = var.admin_email
     address_line_1 = "Dahliastraat 47"
     zip_code       = "4613 DS"
     city           = "Bergen op Zoom"
@@ -13,7 +13,7 @@ locals {
 }
 
 resource "aws_route53domains_registered_domain" "mdekort" {
-  domain_name   = "mdekort.nl"
+  domain_name   = var.domain_name
   auto_renew    = true
   transfer_lock = false # not supported in NL
 

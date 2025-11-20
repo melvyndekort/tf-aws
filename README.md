@@ -59,10 +59,11 @@ This repository manages a complete AWS infrastructure setup including networking
 ```
 tf-aws/
 ├── .github/workflows/     # CI/CD automation
-├── files/                 # Static files (certificates, scripts)
-├── *.tf                  # Terraform configuration files
-├── terraform.tfvars     # Variable definitions
-└── README.md            # This file
+├── terraform/             # Terraform configuration
+│   ├── *.tf              # Infrastructure definitions
+│   ├── terraform.tfvars  # Variable definitions
+│   └── files/            # Static files (certificates, scripts)
+└── README.md             # This file
 ```
 
 ### Core Configuration Files
@@ -99,7 +100,7 @@ cd tf-aws
 ```
 
 ### 2. Configure Variables
-Update `terraform.tfvars` with your specific values:
+Update `terraform/terraform.tfvars` with your specific values:
 ```hcl
 account_id = "your-aws-account-id"
 region     = "eu-west-1"
@@ -108,6 +109,7 @@ pgp_key    = "your-pgp-public-key"
 
 ### 3. Initialize Terraform
 ```bash
+cd terraform
 terraform init
 ```
 

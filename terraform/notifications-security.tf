@@ -68,26 +68,28 @@ resource "aws_cloudwatch_event_target" "security_group_changes" {
   role_arn  = aws_iam_role.eventbridge_notifications.arn
 }
 
-# Human role assumptions (including Roles Anywhere)
-resource "aws_cloudwatch_event_rule" "human_role_assumptions" {
-  name        = "human-role-assumptions-notifications"
-  description = "Alert on human role assumptions (excludes automated systems)"
+# Role assumptions (excludes AWS services)
+resource "aws_cloudwatch_event_rule" "role_assumptions" {
+  name        = "role-assumptions-notifications"
+  description = "Alert on role assumptions (excludes AWS automated systems)"
 
   event_pattern = jsonencode({
     "source" : ["aws.sts"],
     "detail-type" : ["AWS API Call via CloudTrail"],
     "detail" : {
-      "eventName" : ["AssumeRole", "AssumeRoleWithWebIdentity"],
+      "eventName" : ["AssumeRole", "AssumeRoleWithWebIdentity", "AssumeRoleWithSAML"],
       "userIdentity" : {
-        "type" : ["IAMUser", "SAMLUser", "WebIdentityUser", "Unknown"]
+        "type" : [{
+          "anything-but" : ["AWSService"]
+        }]
       }
     }
   })
 }
 
-resource "aws_cloudwatch_event_target" "human_role_assumptions" {
-  rule      = aws_cloudwatch_event_rule.human_role_assumptions.name
-  target_id = "NotificationsHumanAssumeTarget"
+resource "aws_cloudwatch_event_target" "role_assumptions" {
+  rule      = aws_cloudwatch_event_rule.role_assumptions.name
+  target_id = "NotificationsRoleAssumeTarget"
   arn       = aws_sns_topic.notifications.arn
   role_arn  = aws_iam_role.eventbridge_notifications.arn
 }

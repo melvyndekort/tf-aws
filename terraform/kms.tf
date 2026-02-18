@@ -36,7 +36,8 @@ data "aws_iam_policy_document" "kms_generic" {
 
   statement {
     actions = [
-      "kms:GenerateDataKey*"
+      "kms:GenerateDataKey*",
+      "kms:Decrypt*"
     ]
 
     resources = ["*"]

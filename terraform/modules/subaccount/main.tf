@@ -26,13 +26,19 @@ data "aws_iam_policy_document" "admin_assume" {
 
     principals {
       type        = "AWS"
-      identifiers = ["arn:aws:iam::${var.management_account_id}:role/github-actions-network-monitor"]
+      identifiers = ["arn:aws:iam::${var.management_account_id}:root"]
     }
 
     condition {
       test     = "StringEquals"
       variable = "aws:PrincipalOrgID"
       values   = [var.organization_id]
+    }
+
+    condition {
+      test     = "StringLike"
+      variable = "aws:PrincipalArn"
+      values   = ["arn:aws:iam::${var.management_account_id}:role/github-actions-*"]
     }
   }
 }

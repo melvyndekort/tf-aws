@@ -7,11 +7,26 @@ resource "aws_organizations_account" "account" {
 
 data "aws_iam_policy_document" "admin_assume" {
   statement {
-    actions = ["sts:AssumeRole", "sts:TagSession", "sts:SetSourceIdentity"]
+    actions = ["sts:AssumeRole", "sts:TagSession"]
 
     principals {
       type        = "AWS"
       identifiers = ["arn:aws:iam::${var.management_account_id}:role/YubikeyRole"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:PrincipalOrgID"
+      values   = [var.organization_id]
+    }
+  }
+
+  statement {
+    actions = ["sts:AssumeRole", "sts:TagSession"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${var.management_account_id}:role/github-actions-network-monitor"]
     }
 
     condition {

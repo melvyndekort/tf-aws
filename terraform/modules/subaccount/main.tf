@@ -7,7 +7,7 @@ resource "aws_organizations_account" "account" {
 
 data "aws_iam_policy_document" "admin_assume" {
   statement {
-    actions = ["sts:AssumeRole", "sts:TagSession"]
+    actions = ["sts:AssumeRole", "sts:TagSession", "sts:SetSourceIdentity"]
 
     principals {
       type        = "AWS"

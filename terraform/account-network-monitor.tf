@@ -1,10 +1,13 @@
 # Network Monitor AWS Account
-# Dedicated account for network monitoring infrastructure
+data "aws_caller_identity" "current" {}
 
-resource "aws_organizations_account" "network_monitor" {
-  name      = "network-monitor"
-  email     = "aws+network-monitor@mdekort.nl"
-  role_name = "OrganizationAccountAccessRole"
+module "network_monitor" {
+  source = "./modules/subaccount"
+
+  account_name           = "network-monitor"
+  email                  = "aws+network-monitor@mdekort.nl"
+  management_account_id  = data.aws_caller_identity.current.account_id
+  organization_id        = aws_organizations_organization.organization.id
 
   tags = {
     Purpose     = "Network Monitoring"
@@ -14,11 +17,6 @@ resource "aws_organizations_account" "network_monitor" {
 }
 
 output "network_monitor_account_id" {
-  description = "AWS Account ID for network-monitor"
-  value       = aws_organizations_account.network_monitor.id
+  value = module.network_monitor.account_id
 }
 
-output "network_monitor_account_arn" {
-  description = "AWS Account ARN for network-monitor"
-  value       = aws_organizations_account.network_monitor.arn
-}

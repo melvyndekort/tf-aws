@@ -46,6 +46,7 @@ resource "aws_rolesanywhere_profile" "yubikey_profile" {
 }
 
 data "aws_iam_policy_document" "yubikey_policy" {
+  # Management account roles
   statement {
     actions = [
       "sts:AssumeRole",
@@ -56,6 +57,24 @@ data "aws_iam_policy_document" "yubikey_policy" {
       aws_iam_role.admin.arn,
       aws_iam_role.finance.arn,
     ]
+  }
+
+  # Subaccount roles
+  statement {
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession",
+      "sts:SetSourceIdentity",
+    ]
+    resources = [
+      "arn:aws:iam::*:role/AdminRole",
+    ]
+    
+    condition {
+      test     = "StringEquals"
+      variable = "aws:PrincipalOrgID"
+      values   = [aws_organizations_organization.organization.id]
+    }
   }
 }
 

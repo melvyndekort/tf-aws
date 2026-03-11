@@ -69,7 +69,7 @@ data "aws_iam_policy_document" "yubikey_policy" {
     resources = [
       "arn:aws:iam::*:role/AdminRole",
     ]
-    
+
     condition {
       test     = "StringEquals"
       variable = "aws:PrincipalOrgID"

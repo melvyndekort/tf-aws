@@ -21,6 +21,6 @@ provider "aws" {
   region = "eu-west-1"
   
   assume_role {
-    role_arn = "arn:aws:iam::844347863910:role/AdminRole"
+    role_arn = "arn:aws:iam::844347863910:role/OrganizationAccountAccessRole"
   }
 }

@@ -8,33 +8,36 @@ This directory contains the Terraform configuration for the network-monitor AWS 
 - tf-github IAM role for managing GitHub resources
 - AdminRole for cross-account access from management account
 
-## First Time Bootstrap
+## Usage
 
-The subaccount needs to be bootstrapped once to create the AdminRole:
-
-```bash
-cd accounts/network-monitor
-./bootstrap.sh
-# In the new shell with temporary credentials:
-terraform init
-terraform apply
-exit
-```
-
-After the first apply, switch back to AdminRole in `providers.tf`:
-```hcl
-assume_role {
-  role_arn = "arn:aws:iam::844347863910:role/AdminRole"
-}
-```
-
-## Normal Usage
+The Makefile automatically adapts to your current AWS credentials:
 
 ```bash
-cd accounts/network-monitor
+# From repository root
+make account-network-monitor plan
+make account-network-monitor apply
+
+# Or from this directory
+make plan
+make apply
+```
+
+**How it works:**
+- Detects if you're already in account 844347863910
+- If yes: temporarily disables assume_role (uses your current credentials)
+- If no: uses assume_role as configured in providers.tf
+- Automatically restores providers.tf after operations
+
+**Manual Terraform:**
+```bash
 terraform init
 terraform plan
 terraform apply
+```
+
+**Restore original providers.tf:**
+```bash
+make restore
 ```
 
 ## Prerequisites

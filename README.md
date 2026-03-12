@@ -111,14 +111,32 @@ region     = "eu-west-1"
 pgp_key    = "your-pgp-public-key"
 ```
 
-### 3. Initialize Terraform
+### 3. Deploy Infrastructure
+
+Using Make (recommended):
 ```bash
-cd management
-terraform init
+# Management account
+make management plan
+make management apply
+
+# Subaccounts (auto-adapts to your current credentials)
+make account-network-monitor plan
+make account-network-monitor apply
 ```
 
-### 4. Plan and Apply
+The Makefile automatically detects if you're already in the target account and adjusts the provider configuration accordingly.
+
+Using Terraform directly:
 ```bash
+# Management account
+cd management
+terraform init
+terraform plan
+terraform apply
+
+# Subaccounts
+cd accounts/network-monitor
+terraform init
 terraform plan
 terraform apply
 ```

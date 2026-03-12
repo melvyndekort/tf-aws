@@ -2,8 +2,8 @@ terraform {
   required_version = "~> 1.10"
 
   backend "s3" {
-    bucket       = "mdekort.tfstate"
-    key          = "network-monitor.tfstate"
+    bucket       = "mdekort-network-monitor-tfstate"
+    key          = "terraform.tfstate"
     region       = "eu-west-1"
     encrypt      = true
     use_lockfile = true
@@ -21,6 +21,6 @@ provider "aws" {
   region = "eu-west-1"
   
   assume_role {
-    role_arn = "arn:aws:iam::844347863910:role/OrganizationAccountAccessRole"
+    role_arn = "arn:aws:iam::844347863910:role/AdminRole"
   }
 }

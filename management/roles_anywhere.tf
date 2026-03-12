@@ -54,7 +54,7 @@ data "aws_iam_policy_document" "yubikey_policy" {
       "sts:SetSourceIdentity",
     ]
     resources = [
-      aws_iam_role.admin.arn,
+      module.account_bootstrap.admin_role_arn,
       aws_iam_role.finance.arn,
     ]
   }
@@ -68,6 +68,23 @@ data "aws_iam_policy_document" "yubikey_policy" {
     ]
     resources = [
       "arn:aws:iam::*:role/AdminRole",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:PrincipalOrgID"
+      values   = [aws_organizations_organization.organization.id]
+    }
+  }
+
+  # OrganizationAccountAccessRole (without SetSourceIdentity)
+  statement {
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession",
+    ]
+    resources = [
+      "arn:aws:iam::*:role/OrganizationAccountAccessRole",
     ]
 
     condition {

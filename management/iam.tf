@@ -85,23 +85,6 @@ data "aws_iam_policy_document" "ec2_deny" {
   }
 }
 
-# ADMIN ROLE
-resource "aws_iam_role" "admin" {
-  name               = "AdminRole"
-  description        = "Admin role with Yubikey access"
-  assume_role_policy = data.aws_iam_policy_document.multi_assume.json
-}
-
-resource "aws_iam_role_policy_attachment" "admin_policy" {
-  role       = aws_iam_role.admin.name
-  policy_arn = data.aws_iam_policy.admin.arn
-}
-
-resource "aws_iam_role_policy" "admin_ec2_deny" {
-  role   = aws_iam_role.admin.name
-  policy = data.aws_iam_policy_document.ec2_deny.json
-}
-
 # FINANCE ROLE
 resource "aws_iam_role" "finance" {
   name               = "FinanceRole"

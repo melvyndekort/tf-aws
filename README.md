@@ -58,11 +58,15 @@ This repository manages a complete AWS infrastructure setup including networking
 
 ```
 tf-aws/
-├── .github/workflows/     # CI/CD automation
-├── terraform/             # Terraform configuration
+├── modules/               # Shared Terraform modules
+│   ├── account-bootstrap/ # OIDC + AdminRole setup
+│   └── subaccount/        # AWS account creation
+├── management/            # Management account configuration
 │   ├── *.tf              # Infrastructure definitions
 │   ├── terraform.tfvars  # Variable definitions
 │   └── files/            # Static files (certificates, scripts)
+├── accounts/              # Subaccount configurations
+│   └── network-monitor/   # Network monitor account
 └── README.md             # This file
 ```
 
@@ -109,7 +113,7 @@ pgp_key    = "your-pgp-public-key"
 
 ### 3. Initialize Terraform
 ```bash
-cd terraform
+cd management
 terraform init
 ```
 

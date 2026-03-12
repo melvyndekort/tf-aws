@@ -58,7 +58,7 @@ output "generic_kms_alias_arn" {
 }
 
 output "admin_role_name" {
-  value = aws_iam_role.admin.name
+  value = module.account_bootstrap.admin_role_name
 }
 
 output "s3_lambda" {

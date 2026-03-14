@@ -17,3 +17,8 @@ output "admin_role_name" {
   description = "Name of the AdminRole"
   value       = aws_iam_role.admin.name
 }
+
+output "tfstate_bucket_name" {
+  description = "Name of the Terraform state bucket"
+  value       = aws_s3_bucket.tfstate.id
+}

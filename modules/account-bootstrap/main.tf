@@ -115,3 +115,25 @@ resource "aws_iam_role_policy_attachment" "admin" {
   role       = aws_iam_role.admin.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+# Terraform state bucket
+data "aws_caller_identity" "current" {}
+
+resource "aws_s3_bucket" "tfstate" {
+  bucket = "mdekort-tfstate-${data.aws_caller_identity.current.account_id}"
+}
+
+resource "aws_s3_bucket_versioning" "tfstate" {
+  bucket = aws_s3_bucket.tfstate.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "tfstate" {
+  bucket                  = aws_s3_bucket.tfstate.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}

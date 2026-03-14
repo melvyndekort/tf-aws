@@ -28,6 +28,14 @@ data "aws_iam_policy_document" "tf_github_assume" {
       values   = ["repo:melvyndekort/tf-github:ref:refs/heads/main"]
     }
   }
+
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${var.management_account_id}:role/external/github-actions-tf-github"]
+    }
+  }
 }
 
 resource "aws_iam_role" "tf_github" {

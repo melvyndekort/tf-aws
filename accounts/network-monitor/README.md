@@ -7,6 +7,7 @@ This directory contains the Terraform configuration for the network-monitor AWS 
 - GitHub OIDC provider for GitHub Actions authentication
 - tf-github IAM role for managing GitHub resources
 - AdminRole for cross-account access from management account
+- Terraform state S3 bucket
 
 ## Usage
 
@@ -49,4 +50,4 @@ make restore
 
 ## State File
 
-State is stored in S3: `s3://mdekort.tfstate/network-monitor.tfstate`
+State is stored in S3: `s3://mdekort-network-monitor-tfstate/terraform.tfstate`

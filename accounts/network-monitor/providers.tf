@@ -2,8 +2,8 @@ terraform {
   required_version = "~> 1.10"
 
   backend "s3" {
-    bucket       = "mdekort-network-monitor-tfstate"
-    key          = "tf-aws.tfstate"
+    bucket       = "mdekort-tfstate-075673041815"
+    key          = "tf-aws-network-monitor.tfstate"
     region       = "eu-west-1"
     encrypt      = true
     use_lockfile = true

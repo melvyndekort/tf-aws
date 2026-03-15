@@ -101,7 +101,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        account: [network-monitor]
+        include:
+          - account: network-monitor
+            account_id: "844347863910"
     defaults:
       run:
         working-directory: accounts/${{ matrix.account }}
@@ -121,6 +123,18 @@ jobs:
       - name: Terraform Format
         id: fmt
         run: terraform fmt -check
+
+      - name: Create provider override for role assumption
+        run: |
+          cat > providers_override.tf <<EOF
+          provider "aws" {
+            region = "eu-west-1"
+            assume_role {
+              role_arn = "arn:aws:iam::${{ matrix.account_id }}:role/OrganizationAccountAccessRole"
+            }
+          }
+          EOF
+          terraform fmt providers_override.tf
 
       - name: Terraform Init
         id: init

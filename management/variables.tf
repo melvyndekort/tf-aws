@@ -6,11 +6,6 @@ variable "aws_region" {
   type = string
 }
 
-variable "tfstate_bucket" {
-  description = "S3 bucket for Terraform state"
-  type        = string
-}
-
 variable "domain_name" {
   description = "Primary domain name"
   type        = string

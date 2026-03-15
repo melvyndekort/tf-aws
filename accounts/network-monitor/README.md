@@ -50,4 +50,4 @@ make restore
 
 ## State File
 
-State is stored in S3: `s3://mdekort-tfstate-844347863910/tf-aws.tfstate`
+State is stored in S3: `s3://mdekort-network-monitor-tfstate/tf-aws.tfstate`

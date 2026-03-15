@@ -1,6 +1,6 @@
 account_id     = "075673041815"
 aws_region     = "eu-west-1"
-tfstate_bucket = "mdekort.tfstate"
+tfstate_bucket = "mdekort-tfstate-075673041815"
 domain_name    = "mdekort.nl"
 admin_email    = "melvyn@mdekort.nl"
 api_domain     = "api.mdekort.nl"

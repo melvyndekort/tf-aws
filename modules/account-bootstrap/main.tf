@@ -146,3 +146,23 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "tfstate" {
     }
   }
 }
+
+resource "aws_s3_bucket_policy" "tfstate_org_read" {
+  bucket = aws_s3_bucket.tfstate.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowOrgRead"
+      Effect    = "Allow"
+      Principal = "*"
+      Action    = "s3:GetObject"
+      Resource  = "${aws_s3_bucket.tfstate.arn}/*"
+      Condition = {
+        StringEquals = {
+          "aws:PrincipalOrgID" = var.organization_id
+        }
+      }
+    }]
+  })
+}

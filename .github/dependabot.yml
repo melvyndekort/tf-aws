@@ -10,15 +10,19 @@ updates:
       - "melvyndekort"
     reviewers:
       - "melvyndekort"
-    directory: "/"
+
+  - package-ecosystem: "terraform"
+    directory: "/management"
     schedule:
-      interval: "weekly"
+      interval: "daily"
+    rebase-strategy: "auto"
     assignees:
       - "melvyndekort"
     reviewers:
       - "melvyndekort"
+
   - package-ecosystem: "terraform"
-    directory: "/terraform"
+    directory: "/accounts/network-monitor"
     schedule:
       interval: "daily"
     rebase-strategy: "auto"

@@ -42,3 +42,8 @@ clean:
 		cd "$$dir" && rm -rf .terraform terraform.tfstate* .terraform.lock.hcl providers.tf.bak && cd ../..; \
 	done
 	@echo "Clean complete"
+
+fmt:
+	@terraform fmt management/
+	@for dir in accounts/*/; do terraform fmt "$$dir"; done
+	@for dir in modules/*/; do terraform fmt "$$dir"; done

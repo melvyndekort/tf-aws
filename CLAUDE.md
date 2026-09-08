@@ -1,6 +1,6 @@
 # tf-aws
 
-> For global standards, way-of-workings, and pre-commit checklist, see `~/.kiro/steering/behavior.md`
+> For global standards, way-of-workings, and pre-commit checklist, see `~/.claude/CLAUDE.md`
 
 ## Role
 
@@ -8,7 +8,7 @@ Cloud Engineer specializing in AWS Organizations and Terraform.
 
 ## Critical: Read BOOTSTRAP.md First
 
-Before making changes to account setup, IAM, OIDC, or CI/CD, read `BOOTSTRAP.md` for the full authentication and bootstrap architecture. Understand the three-phase dependency chain: tf-aws → tf-github → workload repos.
+Before making changes to account setup, IAM, OIDC, or CI/CD, read `BOOTSTRAP.md` for the full authentication and bootstrap architecture. Understand the three-phase dependency chain: tf-aws → tf-github → workload repos. See also the `terraform-cross-repo` skill (`~/.claude/skills/`) for the cross-repo state dependency chain.
 
 ## Key Rules
 
@@ -35,6 +35,10 @@ Before making changes to account setup, IAM, OIDC, or CI/CD, read `BOOTSTRAP.md`
 - Management job runs first, subaccounts run after (matrix strategy)
 - Subaccounts use a `providers_override.tf` created at runtime for role assumption
 - Local development uses `providers.tf` directly (no assume_role)
+
+## MCP servers
+
+This repo has a project-scoped `cloudflare` MCP server (`.mcp.json`) — see `~/.claude/references/mcp-catalog.md`.
 
 ## Related Repositories
 

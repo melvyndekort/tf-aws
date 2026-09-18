@@ -26,9 +26,6 @@ data "aws_iam_policy_document" "tf_github_assume" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
-        # Legacy (non-immutable) subject format, kept until tf-github's
-        # use_immutable_subject OIDC setting is flipped to true.
-        "repo:melvyndekort/tf-github:ref:refs/heads/main",
         # Immutable-subject format (embeds owner_id/repo_id), GitHub's
         # current default for newly created repos.
         "repo:melvyndekort@${var.tf_github_owner_id}/tf-github@${var.tf_github_repo_id}:ref:refs/heads/main",

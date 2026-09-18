@@ -58,7 +58,7 @@ Repository definitions in `repositories.yaml` include an optional `aws_account` 
 3. Creates a dedicated OIDC role per repository in the correct account (e.g., `github-actions-<repo-name>`)
 4. Sets the `AWS_ROLE_ARN` GitHub Actions secret on each repository to the corresponding role ARN
 
-The OIDC trust policy on each role restricts access to `ref:refs/heads/main` of the specific repository.
+The OIDC trust policy on each role restricts access to `ref:refs/heads/main` of the specific repository, using the immutable-subject claim format — see "GitHub OIDC subject format" below.
 
 ### Phase 4: Workload Deployment (workload repos)
 
@@ -110,6 +110,38 @@ After tf-aws completes, tf-github must run to create per-repo roles and set secr
 1. **tf-aws**: Add account to `management/` and bootstrap config to `accounts/<name>/`. Merge to main. CI creates the account and bootstraps it.
 2. **tf-github**: Add the subaccount provider and module instance to `github-oidc-roles.tf`. Add workload repos with `aws_account` in `repositories.yaml`. Merge to main. CI creates OIDC roles and sets secrets.
 3. **Workload repo**: Configure `providers.tf` with the subaccount's state bucket and region. Push to main. CI authenticates via OIDC and deploys.
+
+## GitHub OIDC subject format
+
+GitHub can issue the OIDC `sub` claim in two formats, toggled per-repository
+via `use_immutable_subject` (`GET`/`PUT
+repos/{owner}/{repo}/actions/oidc/customization/sub` — not exposed by the
+`integrations/github` Terraform provider as of v6.13, so it's managed with
+raw `gh api` calls, not Terraform):
+
+- **Legacy**: `repo:melvyndekort/<repo>:ref:refs/heads/main`
+- **Immutable-subject** (current default for new repos, and now the only
+  format every repo in this org is configured for): `repo:melvyndekort@<owner_id>/<repo>@<repo_id>:ref:refs/heads/main`,
+  embedding the numeric GitHub owner/repo IDs.
+
+Every IAM trust policy created by `oidc_role` (tf-github) and
+`account-bootstrap` (tf-aws, for `github-actions-tf-github` itself) is
+built from the immutable-subject format, using owner_id/repo_id passed in as
+plain Terraform variables (no GitHub provider call from `tf-aws`, which has
+none configured).
+
+**If OIDC assumption fails with `Not authorized to perform
+sts:AssumeRoleWithWebIdentity`**, don't assume the trust policy is
+misconfigured first. Check CloudTrail for the actual `sub` claim GitHub
+sent (`aws cloudtrail lookup-events --lookup-attributes
+AttributeKey=EventName,AttributeValue=AssumeRoleWithWebIdentity` — the error
+message itself never reveals the presented claim), and check the repo's
+current setting with `gh api repos/melvyndekort/<repo>/actions/oidc/customization/sub`.
+A new repo that GitHub defaulted to immutable-subject while its trust
+policy still expected the legacy format is exactly how this format was
+discovered (kids-monitor, 2026-09-18) — every repo has since been migrated,
+but a repo created or renamed outside this Terraform (or a GitHub-side
+default change) could reintroduce the mismatch.
 
 ## Why OrganizationAccountAccessRole Cannot Be Avoided
 
@@ -167,12 +199,19 @@ provider "aws" {
 
 ```hcl
 module "oidc_roles_<id>" {
-  source     = "./oidc_role"
-  github_org = local.github_org
-  repos      = local.oidc_repos_by_account["<id>"]
-  providers  = { aws = aws.account_<id> }
+  source          = "./oidc_role"
+  github_org      = local.github_org
+  github_owner_id = local.github_owner_id
+  repos           = local.oidc_repos_by_account["<id>"]
+  providers       = { aws = aws.account_<id> }
 }
 ```
+
+`local.oidc_repos_by_account["<id>"]` is a map of repo name to numeric
+`repo_id` (from `local.repo_ids`, sourced from each repo's Terraform
+`github_repository` resource), not a plain set of names — the trust policy
+is built from `owner_id`/`repo_id`, not repo name (see "GitHub OIDC subject
+format" below).
 
 3. Merge `all_role_arns` to include the new module's output.
 
@@ -187,6 +226,6 @@ Configure `providers.tf` to use the subaccount's state bucket and no `assume_rol
 - **No long-lived credentials** — all CI/CD uses OIDC with short-lived tokens
 - **Least privilege role chaining** — each repo gets its own IAM role, scoped to a single account
 - **Organization boundary enforcement** — cross-account trust policies verify `aws:PrincipalOrgID`
-- **Branch restriction** — OIDC subject claims are locked to `refs/heads/main`
+- **Branch restriction** — OIDC subject claims are locked to `refs/heads/main`, using the immutable-subject format (see "GitHub OIDC subject format" above)
 - **MFA enforcement** — all human access requires MFA or hardware key authentication
 - **Bootstrap isolation** — `OrganizationAccountAccessRole` is only used during initial account setup, never by workload repos

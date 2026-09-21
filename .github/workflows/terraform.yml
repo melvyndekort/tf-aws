@@ -104,6 +104,8 @@ jobs:
         include:
           - account: network-monitor
             account_id: "844347863910"
+          - account: hermes-agent
+            account_id: "520519513359"
     defaults:
       run:
         working-directory: accounts/${{ matrix.account }}

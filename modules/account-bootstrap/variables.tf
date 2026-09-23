@@ -29,3 +29,9 @@ variable "tf_github_repo_id" {
   type        = number
   default     = 1057394177
 }
+
+variable "hermes_agent_task_role_arn" {
+  description = "ARN of the Hermes Agent ECS task role, trusted to assume ReadOnlyRole in every account"
+  type        = string
+  default     = "arn:aws:iam::520519513359:role/ecsTaskRole-hermes-agent"
+}

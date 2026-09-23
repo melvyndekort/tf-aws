@@ -19,7 +19,7 @@ output "admin_role_name" {
 }
 
 output "readonly_role_arn" {
-  description = "ARN of the ReadOnlyRole, assumable by the Hermes Agent task role"
+  description = "ARN of the ReadOnlyRole"
   value       = aws_iam_role.readonly.arn
 }
 

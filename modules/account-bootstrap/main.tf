@@ -120,27 +120,23 @@ resource "aws_iam_role_policy_attachment" "admin" {
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
-# Read-only role for the Hermes Agent task role. Every account gets one via
-# this shared module, so a new subaccount is visible to Hermes the moment it
-# is bootstrapped - no per-account wiring on the hermes-agent side. The
-# hermes-agent task role's own identity policy is what actually lets it
-# assume this (scoped to role name "ReadOnlyRole" + aws:ResourceOrgID, not a
-# per-account list - see hermes-agent/terraform/iam.tf), so nothing here
-# needs to change when a new account is added.
+# Generic read-only role. Trust is deliberately narrow (see variable
+# description below) even though the role itself carries no org-specific
+# logic - any principal added to the trust list gets the same ReadOnlyAccess.
 data "aws_iam_policy_document" "readonly_assume" {
   statement {
     actions = ["sts:AssumeRole"]
 
     principals {
       type        = "AWS"
-      identifiers = [var.hermes_agent_task_role_arn]
+      identifiers = var.readonly_role_trusted_principal_arns
     }
   }
 }
 
 resource "aws_iam_role" "readonly" {
   name               = "ReadOnlyRole"
-  description        = "Read-only cross-account access for the Hermes Agent task role"
+  description        = "Read-only cross-account access, trusted by the principals in readonly_role_trusted_principal_arns"
   assume_role_policy = data.aws_iam_policy_document.readonly_assume.json
 }
 

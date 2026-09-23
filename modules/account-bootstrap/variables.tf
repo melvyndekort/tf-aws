@@ -29,3 +29,9 @@ variable "tf_github_repo_id" {
   type        = number
   default     = 1057394177
 }
+
+variable "readonly_role_trusted_principal_arns" {
+  description = "IAM principal ARNs trusted to assume ReadOnlyRole. Currently just the Hermes Agent ECS task role; add more to extend read-only cross-account access to other principals."
+  type        = list(string)
+  default     = ["arn:aws:iam::520519513359:role/ecsTaskRole-hermes-agent"]
+}

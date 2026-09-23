@@ -18,6 +18,11 @@ output "admin_role_name" {
   value       = aws_iam_role.admin.name
 }
 
+output "readonly_role_arn" {
+  description = "ARN of the ReadOnlyRole"
+  value       = aws_iam_role.readonly.arn
+}
+
 output "tfstate_bucket_name" {
   description = "Name of the Terraform state bucket"
   value       = aws_s3_bucket.tfstate.id

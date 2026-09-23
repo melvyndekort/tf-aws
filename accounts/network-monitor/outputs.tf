@@ -12,3 +12,8 @@ output "admin_role_arn" {
   description = "ARN of the AdminRole"
   value       = module.account_bootstrap.admin_role_arn
 }
+
+output "readonly_role_arn" {
+  description = "ARN of the ReadOnlyRole"
+  value       = module.account_bootstrap.readonly_role_arn
+}

@@ -120,6 +120,31 @@ resource "aws_iam_role_policy_attachment" "admin" {
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
+# Generic read-only role. Trust is deliberately narrow (see variable
+# description below) even though the role itself carries no org-specific
+# logic - any principal added to the trust list gets the same ReadOnlyAccess.
+data "aws_iam_policy_document" "readonly_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "AWS"
+      identifiers = var.readonly_role_trusted_principal_arns
+    }
+  }
+}
+
+resource "aws_iam_role" "readonly" {
+  name               = "ReadOnlyRole"
+  description        = "Read-only cross-account access, trusted by the principals in readonly_role_trusted_principal_arns"
+  assume_role_policy = data.aws_iam_policy_document.readonly_assume.json
+}
+
+resource "aws_iam_role_policy_attachment" "readonly" {
+  role       = aws_iam_role.readonly.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
 # Terraform state bucket
 data "aws_caller_identity" "current" {}
 

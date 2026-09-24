@@ -92,8 +92,25 @@ data "aws_iam_policy_document" "tf_github_plan_assume" {
   statement {
     actions = ["sts:AssumeRole"]
     principals {
-      type        = "AWS"
-      identifiers = ["arn:aws:iam::${var.management_account_id}:role/external/github-actions-tf-github-plan"]
+      type = "AWS"
+      # Account root narrowed by condition, not the role ARN directly.
+      #
+      # In the management account this statement's target IS this very role, and
+      # IAM rejects a principal ARN it cannot resolve at CreateRole time
+      # (MalformedPolicyDocument). The apply role above survives the direct form
+      # only because it predates its own self-referencing statement; a role
+      # created from scratch has no such history.
+      #
+      # Same idiom AdminRole already uses for the github-actions-* roles below:
+      # the root always exists, and the PrincipalArn condition keeps it exactly
+      # as narrow as naming the role.
+      identifiers = ["arn:aws:iam::${var.management_account_id}:root"]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:PrincipalArn"
+      values   = ["arn:aws:iam::${var.management_account_id}:role/external/github-actions-tf-github-plan"]
     }
   }
 }

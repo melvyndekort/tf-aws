@@ -51,6 +51,51 @@ data "aws_iam_policy_document" "kms_generic" {
     }
   }
 
+  # Let principals in other org accounts use this key, but ONLY for their own
+  # repo's secrets. Without the EncryptionContext condition an org-wide grant
+  # would let any principal in any account decrypt EVERY secret on this key,
+  # including the management-account ones (tf-github, tf-backup, tf-cloudflare,
+  # email-infra, aws-ntfy-alerts, tf-grafana, tf-minecraft) - a significant
+  # widening, since today those are reachable only from this account.
+  #
+  # `target` is already unique per repo in every secrets.tf, so it is the
+  # natural boundary: subaccount repos are listed explicitly below and get
+  # access to nothing else.
+  statement {
+    sid = "OrgAccountsScopedToOwnSecrets"
+
+    actions = [
+      "kms:Encrypt*",
+      "kms:Decrypt*",
+      "kms:ReEncrypt*",
+      "kms:DescribeKey",
+      "kms:GenerateDataKey*",
+    ]
+
+    resources = ["*"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["*"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:PrincipalOrgID"
+
+      values = [
+        aws_organizations_organization.organization.id,
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:EncryptionContext:target"
+
+      values = var.subaccount_secret_targets
+    }
+  }
+
   statement {
     actions = [
       "kms:Encrypt*",

@@ -35,3 +35,16 @@ variable "readonly_role_trusted_principal_arns" {
   type        = list(string)
   default     = ["arn:aws:iam::520519513359:role/ecsTaskRole-hermes-agent"]
 }
+
+
+variable "plan_job_workflow_refs" {
+  description = <<-EOT
+    Reusable workflows allowed to assume the tf-github plan role, matched on the
+    job_workflow_ref OIDC claim. This is the real boundary that stops
+    PR-authored workflow code from using the role.
+  EOT
+
+  type    = list(string)
+  default = ["melvyndekort/gha-workflows/.github/workflows/terraform-pr-plan.yml@*"]
+}
+

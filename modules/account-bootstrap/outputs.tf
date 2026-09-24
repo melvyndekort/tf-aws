@@ -27,3 +27,13 @@ output "tfstate_bucket_name" {
   description = "Name of the Terraform state bucket"
   value       = aws_s3_bucket.tfstate.id
 }
+
+output "tf_github_plan_role_arn" {
+  description = "ARN of the read-only tf-github PR plan role"
+  value       = aws_iam_role.tf_github_plan.arn
+}
+
+output "tf_github_plan_role_name" {
+  description = "Name of the read-only tf-github PR plan role"
+  value       = aws_iam_role.tf_github_plan.name
+}

@@ -53,6 +53,62 @@ resource "aws_iam_role_policy_attachment" "tf_github_admin" {
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
+# tf-github Plan Role (read-only counterpart of the role above, for PR runs)
+#
+# Lives here rather than in tf-github to avoid a circular dependency: a plan
+# role created by tf-github would only exist after a tf-github apply, so a PR
+# that broke the plan could not be fixed by a PR.
+data "aws_iam_policy_document" "tf_github_plan_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values = [
+        # Same immutable-subject format as the apply role, but :pull_request
+        # instead of a branch ref - that mismatch is why PR runs used to fail.
+        "repo:melvyndekort@${var.tf_github_owner_id}/tf-github@${var.tf_github_repo_id}:pull_request",
+      ]
+    }
+    condition {
+      # The apply role needs no equivalent: it is reachable only from main,
+      # which is already review-gated. A PR can contain arbitrary workflow
+      # code, so this pins the role to the reviewed shared plan workflow.
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:job_workflow_ref"
+      values   = var.plan_job_workflow_refs
+    }
+  }
+
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${var.management_account_id}:role/external/github-actions-tf-github-plan"]
+    }
+  }
+}
+
+resource "aws_iam_role" "tf_github_plan" {
+  name               = "github-actions-tf-github-plan"
+  path               = "/external/"
+  assume_role_policy = data.aws_iam_policy_document.tf_github_plan_assume.json
+}
+
+resource "aws_iam_role_policy_attachment" "tf_github_plan_readonly" {
+  role       = aws_iam_role.tf_github_plan.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
 # Admin Role with unified trust policy
 data "aws_iam_policy_document" "admin_assume" {
   # Local user with MFA (works in root, harmless in subaccounts)

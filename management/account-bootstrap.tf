@@ -8,17 +8,58 @@ module "account_bootstrap" {
   organization_id       = aws_organizations_organization.organization.id
   melvyn_user_arn       = aws_iam_user.melvyn.arn
   yubikey_role_arn      = aws_iam_role.yubikey_role.arn
-
-  # Management gets the GitHub-facing tf-github plan role plus the KMS decrypt
-  # grant; subaccounts get the assume-from-management variant.
-  is_management_account = true
-  generic_kms_key_arn   = aws_kms_key.generic.arn
 }
 
 # EC2 regional restriction for AdminRole
 resource "aws_iam_role_policy" "admin_ec2_deny" {
   role   = module.account_bootstrap.admin_role_name
   policy = data.aws_iam_policy_document.ec2_deny.json
+}
+
+# Management-only grants for the tf-github plan role. Same shape as the
+# admin_ec2_deny attachment above: the module creates the role in every
+# account, the management account adds what only it needs.
+#
+# tf-github manages IAM roles in every account, so its plan refreshes
+# cross-account and the management role must reach the subaccount plan roles.
+# ReadOnlyAccess does not include sts:AssumeRole, so this grant is required -
+# simulate-principal-policy returns implicitDeny without it.
+data "aws_iam_policy_document" "tf_github_plan_assume_subaccounts" {
+  statement {
+    sid       = "AssumeSubaccountPlanRoles"
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = ["arn:aws:iam::*:role/external/github-actions-tf-github-plan"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:PrincipalOrgID"
+      values   = [aws_organizations_organization.organization.id]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "tf_github_plan_assume_subaccounts" {
+  name   = "assume-subaccount-plan-roles"
+  role   = module.account_bootstrap.tf_github_plan_role_name
+  policy = data.aws_iam_policy_document.tf_github_plan_assume_subaccounts.json
+}
+
+# tf-github's plan decrypts target=tf-github secrets. ReadOnlyAccess covers
+# kms:Describe*/Get*/List* but not kms:Decrypt, and the key is management-only.
+data "aws_iam_policy_document" "tf_github_plan_kms_decrypt" {
+  statement {
+    sid       = "DecryptPlanSecrets"
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [aws_kms_key.generic.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "tf_github_plan_kms_decrypt" {
+  name   = "kms-decrypt"
+  role   = module.account_bootstrap.tf_github_plan_role_name
+  policy = data.aws_iam_policy_document.tf_github_plan_kms_decrypt.json
 }
 
 # Outputs

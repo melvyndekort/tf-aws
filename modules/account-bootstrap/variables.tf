@@ -36,16 +36,6 @@ variable "readonly_role_trusted_principal_arns" {
   default     = ["arn:aws:iam::520519513359:role/ecsTaskRole-hermes-agent"]
 }
 
-variable "is_management_account" {
-  description = <<-EOT
-    True only for the management account. Selects the tf-github plan role's
-    trust: GitHub OIDC on pull_request in management, assume-from-management
-    in subaccounts. Also gates the management-only KMS decrypt grant.
-  EOT
-
-  type    = bool
-  default = false
-}
 
 variable "plan_job_workflow_refs" {
   description = <<-EOT
@@ -58,13 +48,3 @@ variable "plan_job_workflow_refs" {
   default = ["melvyndekort/gha-workflows/.github/workflows/terraform-pr-plan.yml@*"]
 }
 
-variable "generic_kms_key_arn" {
-  description = <<-EOT
-    ARN of alias/generic, granted to the tf-github plan role for kms:Decrypt so
-    its plan can read target=tf-github secrets. Management account only; empty
-    disables the grant.
-  EOT
-
-  type    = string
-  default = ""
-}

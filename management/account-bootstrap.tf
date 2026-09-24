@@ -8,6 +8,11 @@ module "account_bootstrap" {
   organization_id       = aws_organizations_organization.organization.id
   melvyn_user_arn       = aws_iam_user.melvyn.arn
   yubikey_role_arn      = aws_iam_role.yubikey_role.arn
+
+  # Management gets the GitHub-facing tf-github plan role plus the KMS decrypt
+  # grant; subaccounts get the assume-from-management variant.
+  is_management_account = true
+  generic_kms_key_arn   = aws_kms_key.generic.arn
 }
 
 # EC2 regional restriction for AdminRole
@@ -30,4 +35,9 @@ output "tf_github_role_arn" {
 output "readonly_role_arn" {
   description = "ARN of the ReadOnlyRole"
   value       = module.account_bootstrap.readonly_role_arn
+}
+
+output "tf_github_plan_role_arn" {
+  description = "ARN of the read-only tf-github PR plan role"
+  value       = module.account_bootstrap.tf_github_plan_role_arn
 }

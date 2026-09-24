@@ -17,3 +17,8 @@ output "readonly_role_arn" {
   description = "ARN of the ReadOnlyRole"
   value       = module.account_bootstrap.readonly_role_arn
 }
+
+output "tf_github_plan_role_arn" {
+  description = "ARN of the read-only tf-github PR plan role"
+  value       = module.account_bootstrap.tf_github_plan_role_arn
+}

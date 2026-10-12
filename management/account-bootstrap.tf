@@ -62,6 +62,33 @@ resource "aws_iam_role_policy" "tf_github_plan_kms_decrypt" {
   policy = data.aws_iam_policy_document.tf_github_plan_kms_decrypt.json
 }
 
+# ReadOnlyRole decrypts the secrets of the repos whose drift check plans in this
+# account. ReadOnlyAccess covers kms:Describe*/Get*/List* but not kms:Decrypt.
+# Scoped to one key AND an explicit encryption-context allow-list, so the role
+# cannot decrypt any other secret on alias/generic (e.g. email-infra's).
+# Same account as the key, whose policy delegates to the account root, so an
+# identity-policy grant suffices. The state bucket is AES256, no KMS involved.
+data "aws_iam_policy_document" "readonly_kms_decrypt" {
+  statement {
+    sid       = "DecryptDriftCheckSecrets"
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [aws_kms_key.generic.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:EncryptionContext:target"
+      values   = ["tf-github", "tf-cloudflare", "tf-grafana", "tf-backup"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "readonly_kms_decrypt" {
+  name   = "kms-decrypt"
+  role   = module.account_bootstrap.readonly_role_name
+  policy = data.aws_iam_policy_document.readonly_kms_decrypt.json
+}
+
 # Outputs
 output "github_oidc_provider_arn" {
   description = "ARN of the GitHub OIDC provider"

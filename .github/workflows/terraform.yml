@@ -28,6 +28,10 @@ jobs:
   management:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
+    # The apply role (github-actions-tf-aws) trusts only the
+    # `:environment:production` OIDC subject; without this the job's subject is
+    # `:ref:refs/heads/main` and AssumeRoleWithWebIdentity is denied.
+    environment: production
     defaults:
       run:
         working-directory: management
@@ -99,6 +103,7 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     needs: management
     runs-on: ubuntu-latest
+    environment: production
     strategy:
       matrix:
         include:

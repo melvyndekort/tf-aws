@@ -42,3 +42,13 @@ output "tf_github_plan_role_name" {
   description = "Name of the read-only tf-github PR plan role"
   value       = aws_iam_role.tf_github_plan.name
 }
+
+output "terraform_plan_role_arn" {
+  description = "ARN of the TerraformPlanRole"
+  value       = aws_iam_role.terraform_plan.arn
+}
+
+output "terraform_plan_role_name" {
+  description = "Name of the TerraformPlanRole"
+  value       = aws_iam_role.terraform_plan.name
+}

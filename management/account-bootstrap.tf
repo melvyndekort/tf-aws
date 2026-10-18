@@ -96,6 +96,29 @@ resource "aws_iam_role_policy" "readonly_kms_decrypt" {
   policy = data.aws_iam_policy_document.readonly_kms_decrypt.json
 }
 
+# TerraformPlanRole decrypts the secrets of the repos the drift check plans in this
+# account, same target allow-list as the ReadOnlyRole grant it replaces.
+data "aws_iam_policy_document" "terraform_plan_kms_decrypt" {
+  statement {
+    sid       = "DecryptPlanSecrets"
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [aws_kms_key.generic.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:EncryptionContext:target"
+      values   = ["tf-github", "tf-cloudflare", "tf-grafana", "tf-backup"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "terraform_plan_kms_decrypt" {
+  name   = "kms-decrypt"
+  role   = module.account_bootstrap.terraform_plan_role_name
+  policy = data.aws_iam_policy_document.terraform_plan_kms_decrypt.json
+}
+
 # Outputs
 output "github_oidc_provider_arn" {
   description = "ARN of the GitHub OIDC provider"

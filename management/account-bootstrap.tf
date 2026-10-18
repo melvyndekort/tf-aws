@@ -53,6 +53,13 @@ data "aws_iam_policy_document" "tf_github_plan_kms_decrypt" {
     effect    = "Allow"
     actions   = ["kms:Decrypt"]
     resources = [aws_kms_key.generic.arn]
+
+    # Only tf-github's own secret, not every secret on the shared key.
+    condition {
+      test     = "StringEquals"
+      variable = "kms:EncryptionContext:target"
+      values   = ["tf-github"]
+    }
   }
 }
 

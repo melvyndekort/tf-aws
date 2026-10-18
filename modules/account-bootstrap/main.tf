@@ -232,6 +232,34 @@ resource "aws_iam_role_policy_attachment" "readonly" {
   policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
 }
 
+# Purpose-specific role for read-only Terraform plans (e.g. the weekly drift
+# check). Kept separate from the generic ReadOnlyRole above so that decrypt
+# grants never attach to a role other consumers may be trusted on. The module
+# creates it everywhere with plain ReadOnlyAccess; accounts whose plans must
+# decrypt secrets add a target-scoped kms:Decrypt at the call site, the same
+# way AdminRole gets its per-account extras. Trusted directly, no role chaining.
+data "aws_iam_policy_document" "terraform_plan_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "AWS"
+      identifiers = var.terraform_plan_role_trusted_principal_arns
+    }
+  }
+}
+
+resource "aws_iam_role" "terraform_plan" {
+  name               = "TerraformPlanRole"
+  description        = "Read-only Terraform plan access, trusted by the principals in terraform_plan_role_trusted_principal_arns"
+  assume_role_policy = data.aws_iam_policy_document.terraform_plan_assume.json
+}
+
+resource "aws_iam_role_policy_attachment" "terraform_plan" {
+  role       = aws_iam_role.terraform_plan.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
 # Terraform state bucket
 data "aws_caller_identity" "current" {}
 

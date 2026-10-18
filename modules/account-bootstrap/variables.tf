@@ -37,6 +37,12 @@ variable "readonly_role_trusted_principal_arns" {
 }
 
 
+variable "terraform_plan_role_trusted_principal_arns" {
+  description = "IAM principal ARNs trusted to assume TerraformPlanRole. Currently just the Hermes Agent ECS task role."
+  type        = list(string)
+  default     = ["arn:aws:iam::520519513359:role/ecsTaskRole-hermes-agent"]
+}
+
 variable "plan_job_workflow_refs" {
   description = <<-EOT
     Reusable workflows allowed to assume the tf-github plan role, matched on the

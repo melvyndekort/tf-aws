@@ -31,16 +31,22 @@ variable "tf_github_repo_id" {
 }
 
 variable "readonly_role_trusted_principal_arns" {
-  description = "IAM principal ARNs trusted to assume ReadOnlyRole. Currently just the Hermes Agent ECS task role; add more to extend read-only cross-account access to other principals."
+  description = "IAM principal ARNs trusted to assume ReadOnlyRole. Currently the Hermes Agent ECS task role and, for its move from ECS to EC2, the Hermes Agent EC2 instance role (drop the ECS one once the migration is done); add more to extend read-only cross-account access to other principals. IAM resolves each ARN to the role's unique ID when the policy is saved, so a deleted and recreated role must be applied again."
   type        = list(string)
-  default     = ["arn:aws:iam::520519513359:role/ecsTaskRole-hermes-agent"]
+  default = [
+    "arn:aws:iam::520519513359:role/ecsTaskRole-hermes-agent",
+    "arn:aws:iam::520519513359:role/ec2Role-hermes-agent",
+  ]
 }
 
 
 variable "terraform_plan_role_trusted_principal_arns" {
-  description = "IAM principal ARNs trusted to assume TerraformPlanRole. Currently just the Hermes Agent ECS task role."
+  description = "IAM principal ARNs trusted to assume TerraformPlanRole. Currently the Hermes Agent ECS task role and, for its move from ECS to EC2, the Hermes Agent EC2 instance role (drop the ECS one once the migration is done)."
   type        = list(string)
-  default     = ["arn:aws:iam::520519513359:role/ecsTaskRole-hermes-agent"]
+  default = [
+    "arn:aws:iam::520519513359:role/ecsTaskRole-hermes-agent",
+    "arn:aws:iam::520519513359:role/ec2Role-hermes-agent",
+  ]
 }
 
 variable "plan_job_workflow_refs" {

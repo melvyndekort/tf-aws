@@ -57,14 +57,68 @@ data "aws_iam_policy_document" "tf_github_assume" {
 }
 
 resource "aws_iam_role" "tf_github" {
-  name               = "github-actions-tf-github"
-  path               = "/external/"
-  assume_role_policy = data.aws_iam_policy_document.tf_github_assume.json
+  name                 = "github-actions-tf-github"
+  path                 = "/external/"
+  assume_role_policy   = data.aws_iam_policy_document.tf_github_assume.json
+  permissions_boundary = aws_iam_policy.terraform_github_boundary.arn
 }
 
 resource "aws_iam_role_policy_attachment" "tf_github_admin" {
   role       = aws_iam_role.tf_github.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+# F2 remediation (tf-github-redesign-plan-2026-10.md §4.6, §5.1): bounds what
+# github-actions-tf-github can do despite holding AdministratorAccess. Denies
+# long-lived credential creation outright and restricts iam:PassRole to the
+# /external/ OIDC-role path (plus Terraform's own usage), so a compromised or
+# buggy tf-github apply cannot mint IAM users/keys or pass an unrelated role to
+# a service. Everything else a Terraform apply needs stays allowed.
+data "aws_iam_policy_document" "terraform_github_boundary" {
+  statement {
+    sid    = "DenyLongLivedCredentialCreation"
+    effect = "Deny"
+    actions = [
+      "iam:CreateUser",
+      "iam:CreateAccessKey",
+      "iam:CreateLoginProfile",
+      "iam:AttachUserPolicy",
+      "iam:PutUserPolicy",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "DenyPassRoleOutsideExternalPath"
+    effect    = "Deny"
+    actions   = ["iam:PassRole"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringNotLike"
+      variable = "iam:PassedToService"
+      values   = ["terraform*"]
+    }
+
+    condition {
+      test     = "StringNotLike"
+      variable = "iam:RoleName"
+      values   = ["/external/*"]
+    }
+  }
+
+  statement {
+    sid       = "AllowEverythingElse"
+    effect    = "Allow"
+    actions   = ["*"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "terraform_github_boundary" {
+  name        = "TerraformGitHubBoundary"
+  description = "Permissions boundary for github-actions-tf-github: denies long-lived credential creation and PassRole outside /external/"
+  policy      = data.aws_iam_policy_document.terraform_github_boundary.json
 }
 
 # tf-github Plan Role (read-only counterpart of the role above, for PR runs)
@@ -133,6 +187,14 @@ resource "aws_iam_role" "tf_github_plan" {
   name               = "github-actions-tf-github-plan"
   path               = "/external/"
   assume_role_policy = data.aws_iam_policy_document.tf_github_plan_assume.json
+  # F7 (tf-github-redesign-plan-2026-10.md §5.3, §8 Phase 1 task 7) asked for
+  # MaxSessionDuration=900 here, but IAM rejects any value below 3600 on this
+  # attribute (confirmed: "expected max_session_duration to be in the range
+  # (3600 - 43200), got 900") - it is not configurable down to 900. The real
+  # enforcement point is the `role-duration-seconds: 900` already specified on
+  # the plan workflow's configure-aws-credentials step (plan §7.2), which caps
+  # the actual token lifetime for this role regardless of the role's own
+  # (unavoidable 3600s minimum) ceiling. No Terraform change needed for F7.
 }
 
 resource "aws_iam_role_policy_attachment" "tf_github_plan_readonly" {
@@ -174,7 +236,20 @@ data "aws_iam_policy_document" "admin_assume" {
     }
   }
 
-  # GitHub Actions roles from management account (for cross-account access)
+  # tf-github's own apply role, from the management account (for cross-account
+  # access while it provisions other repos' OIDC roles in this account).
+  #
+  # F5 remediation (tf-github-redesign-plan-2026-10.md §4.7, §5.1): this used
+  # to be a StringLike wildcard "role/github-actions-*", intended to trust only
+  # tf-github's bootstrap role but in practice matching the name prefix of
+  # EVERY per-repo apply role tf-github creates (github-actions-<repo>) too,
+  # in the management account. Confirmed via CloudTrail (zero
+  # AssumeRole-on-AdminRole events in any account, 90-day lookback) that
+  # nothing currently depends on that reach, and the wildcard never actually
+  # matched the real path-qualified ARN anyway (every github-actions-* role is
+  # created at path /external/, so its ARN is .../role/external/github-actions-*
+  # - the old pattern omitted the path segment and could not have matched).
+  # Narrowed to the exact ARN of github-actions-tf-github only.
   statement {
     actions = ["sts:AssumeRole", "sts:TagSession", "sts:SetSourceIdentity"]
 
@@ -190,9 +265,9 @@ data "aws_iam_policy_document" "admin_assume" {
     }
 
     condition {
-      test     = "StringLike"
+      test     = "ArnEquals"
       variable = "aws:PrincipalArn"
-      values   = ["arn:aws:iam::${var.management_account_id}:role/github-actions-*"]
+      values   = ["arn:aws:iam::${var.management_account_id}:role/external/github-actions-tf-github"]
     }
   }
 }

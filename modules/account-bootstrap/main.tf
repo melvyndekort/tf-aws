@@ -29,19 +29,20 @@ data "aws_iam_policy_document" "tf_github_assume" {
         # Immutable-subject format (embeds owner_id/repo_id), GitHub's
         # current default for newly created repos.
         #
-        # Both subjects are accepted during the `production` environment
-        # rollout. A job that declares `environment:` gets an
-        # `:environment:<name>` subject INSTEAD of `:ref:refs/heads/main` —
-        # they are mutually exclusive, so accepting only one would break the
-        # apply the moment tf-github's caller changes (or is reverted).
-        #
-        # tf-github's own role lives here rather than in tf-github, so the
-        # matching change to the other 19 repos is in tf-github's
-        # `oidc_role` module. Both must accept the environment subject before
-        # ANY caller moves, otherwise tf-github becomes the one repo that
-        # cannot be canaried. The `:ref:refs/heads/main` entry is dropped
-        # from both sides only once every caller has moved.
-        "repo:melvyndekort@${var.tf_github_owner_id}/tf-github@${var.tf_github_repo_id}:ref:refs/heads/main",
+        # F1 resolution (tf-github-redesign-plan-2026-10.md §8 Phase 2
+        # task 7, §5.1 exit criterion): the `:ref:refs/heads/main`
+        # fallback subject is removed now that the transition is
+        # complete. Verified before removing it: tf-github's only apply-
+        # role caller is .github/workflows/terraform-apply.yml, which
+        # calls the shared melvyndekort/gha-workflows terraform-apply.yml@v1
+        # with `environment: production` (the reusable workflow sets
+        # `environment: ${{ inputs.environment }}` on its job) - that
+        # produces the `:environment:production` subject, never
+        # `:ref:refs/heads/main`. No other workflow in tf-github assumes
+        # this role (terraform-pr.yml uses the separate, read-only plan
+        # role instead). The Phase 1 EventBridge rule monitoring for the
+        # ref-based subject (tf-github-ref-based-assume-notifications,
+        # management/notifications-monitoring.tf) never fired.
         "repo:melvyndekort@${var.tf_github_owner_id}/tf-github@${var.tf_github_repo_id}:environment:production",
       ]
     }

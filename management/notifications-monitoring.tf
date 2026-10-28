@@ -93,15 +93,6 @@ resource "aws_cloudwatch_event_target" "lambda_deployments" {
   role_arn  = aws_iam_role.eventbridge_notifications.arn
 }
 
-# F1 interim control (tf-github-redesign-plan-2026-10.md §5.1, §8 Phase 1 task
-# 4): github-actions-tf-github's trust policy accepts both the
-# :environment:production subject and a :ref:refs/heads/main fallback during
-# the migration window. Alert on any assumption using the ref-based subject so
-# an unexpected use (e.g. a workflow_dispatch outside the normal apply path)
-# is visible, rather than silent, until that fallback statement is removed
-# (Phase 2 exit criterion). Management-account only: this is where the
-# CloudTrail multi-region trail is confirmed; the subaccounts' own coverage is
-# a separate Phase 0 prerequisite.
 resource "aws_cloudwatch_event_rule" "tf_github_ref_based_assume" {
   name        = "tf-github-ref-based-assume-notifications"
   description = "Alert when github-actions-tf-github is assumed via the :ref:refs/heads/main fallback subject instead of :environment:production"

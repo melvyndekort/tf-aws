@@ -28,21 +28,6 @@ data "aws_iam_policy_document" "tf_github_assume" {
       values = [
         # Immutable-subject format (embeds owner_id/repo_id), GitHub's
         # current default for newly created repos.
-        #
-        # F1 resolution (tf-github-redesign-plan-2026-10.md §8 Phase 2
-        # task 7, §5.1 exit criterion): the `:ref:refs/heads/main`
-        # fallback subject is removed now that the transition is
-        # complete. Verified before removing it: tf-github's only apply-
-        # role caller is .github/workflows/terraform-apply.yml, which
-        # calls the shared melvyndekort/gha-workflows terraform-apply.yml@v1
-        # with `environment: production` (the reusable workflow sets
-        # `environment: ${{ inputs.environment }}` on its job) - that
-        # produces the `:environment:production` subject, never
-        # `:ref:refs/heads/main`. No other workflow in tf-github assumes
-        # this role (terraform-pr.yml uses the separate, read-only plan
-        # role instead). The Phase 1 EventBridge rule monitoring for the
-        # ref-based subject (tf-github-ref-based-assume-notifications,
-        # management/notifications-monitoring.tf) never fired.
         "repo:melvyndekort@${var.tf_github_owner_id}/tf-github@${var.tf_github_repo_id}:environment:production",
       ]
     }
@@ -69,12 +54,6 @@ resource "aws_iam_role_policy_attachment" "tf_github_admin" {
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
-# F2 remediation (tf-github-redesign-plan-2026-10.md §4.6, §5.1): bounds what
-# github-actions-tf-github can do despite holding AdministratorAccess. Denies
-# long-lived credential creation outright and restricts iam:PassRole to the
-# /external/ OIDC-role path (plus Terraform's own usage), so a compromised or
-# buggy tf-github apply cannot mint IAM users/keys or pass an unrelated role to
-# a service. Everything else a Terraform apply needs stays allowed.
 data "aws_iam_policy_document" "terraform_github_boundary" {
   statement {
     sid    = "DenyLongLivedCredentialCreation"
@@ -188,14 +167,6 @@ resource "aws_iam_role" "tf_github_plan" {
   name               = "github-actions-tf-github-plan"
   path               = "/external/"
   assume_role_policy = data.aws_iam_policy_document.tf_github_plan_assume.json
-  # F7 (tf-github-redesign-plan-2026-10.md §5.3, §8 Phase 1 task 7) asked for
-  # MaxSessionDuration=900 here, but IAM rejects any value below 3600 on this
-  # attribute (confirmed: "expected max_session_duration to be in the range
-  # (3600 - 43200), got 900") - it is not configurable down to 900. The real
-  # enforcement point is the `role-duration-seconds: 900` already specified on
-  # the plan workflow's configure-aws-credentials step (plan §7.2), which caps
-  # the actual token lifetime for this role regardless of the role's own
-  # (unavoidable 3600s minimum) ceiling. No Terraform change needed for F7.
 }
 
 resource "aws_iam_role_policy_attachment" "tf_github_plan_readonly" {
@@ -239,18 +210,6 @@ data "aws_iam_policy_document" "admin_assume" {
 
   # tf-github's own apply role, from the management account (for cross-account
   # access while it provisions other repos' OIDC roles in this account).
-  #
-  # F5 remediation (tf-github-redesign-plan-2026-10.md §4.7, §5.1): this used
-  # to be a StringLike wildcard "role/github-actions-*", intended to trust only
-  # tf-github's bootstrap role but in practice matching the name prefix of
-  # EVERY per-repo apply role tf-github creates (github-actions-<repo>) too,
-  # in the management account. Confirmed via CloudTrail (zero
-  # AssumeRole-on-AdminRole events in any account, 90-day lookback) that
-  # nothing currently depends on that reach, and the wildcard never actually
-  # matched the real path-qualified ARN anyway (every github-actions-* role is
-  # created at path /external/, so its ARN is .../role/external/github-actions-*
-  # - the old pattern omitted the path segment and could not have matched).
-  # Narrowed to the exact ARN of github-actions-tf-github only.
   statement {
     actions = ["sts:AssumeRole", "sts:TagSession", "sts:SetSourceIdentity"]
 

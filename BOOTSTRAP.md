@@ -51,14 +51,14 @@ After this phase, the subaccount has everything needed for tf-github to operate.
 
 The tf-github repository is the central role broker. It manages all GitHub repositories and their AWS access.
 
-Repository definitions in `repositories.yaml` include an optional `aws_account` field. When present, tf-github:
+Repository definitions in `repos/*.yaml` (one file per repo) include an optional `aws_account` field. When present, tf-github:
 
 1. Groups repositories by target account
 2. Uses a per-account AWS provider (assuming into `github-actions-tf-github` in each subaccount)
 3. Creates a dedicated OIDC role per repository in the correct account (e.g., `github-actions-<repo-name>`)
 4. Sets the `AWS_ROLE_ARN` GitHub Actions secret on each repository to the corresponding role ARN
 
-The OIDC trust policy on each role restricts access to `ref:refs/heads/main` of the specific repository, using the immutable-subject claim format — see "GitHub OIDC subject format" below.
+The OIDC trust policy on each role restricts access to the `production` GitHub **Environment** of the specific repository (`:environment:production`), not a branch ref, using the immutable-subject claim format — see "GitHub OIDC subject format" below.
 
 ### Phase 4: Workload Deployment (workload repos)
 
@@ -108,27 +108,35 @@ After tf-aws completes, tf-github must run to create per-repo roles and set secr
 ### Deployment sequence for a new subaccount
 
 1. **tf-aws**: Add account to `management/` and bootstrap config to `accounts/<name>/`. Merge to main. CI creates the account and bootstraps it.
-2. **tf-github**: Add the subaccount provider and module instance to `github-oidc-roles.tf`. Add workload repos with `aws_account` in `repositories.yaml`. Merge to main. CI creates OIDC roles and sets secrets.
+2. **tf-github**: Add the subaccount provider and module instance to `github-oidc-roles.tf`. Add workload repos with `aws_account` in `repos/<name>.yaml`. Merge to main. CI creates OIDC roles and sets secrets.
 3. **Workload repo**: Configure `providers.tf` with the subaccount's state bucket and region. Push to main. CI authenticates via OIDC and deploys.
 
 ## GitHub OIDC subject format
 
-GitHub can issue the OIDC `sub` claim in two formats, toggled per-repository
+GitHub can issue the OIDC `sub` claim in several formats, toggled per-repository
 via `use_immutable_subject` (`GET`/`PUT
 repos/{owner}/{repo}/actions/oidc/customization/sub` — not exposed by the
 `integrations/github` Terraform provider as of v6.13, so it's managed with
 raw `gh api` calls, not Terraform):
 
-- **Legacy**: `repo:melvyndekort/<repo>:ref:refs/heads/main`
-- **Immutable-subject** (current default for new repos, and now the only
-  format every repo in this org is configured for): `repo:melvyndekort@<owner_id>/<repo>@<repo_id>:ref:refs/heads/main`,
+- **Legacy, branch-pinned**: `repo:melvyndekort/<repo>:ref:refs/heads/main`
+- **Immutable-subject, branch-pinned**: `repo:melvyndekort@<owner_id>/<repo>@<repo_id>:ref:refs/heads/main`,
   embedding the numeric GitHub owner/repo IDs.
+- **Immutable-subject, environment-pinned** (current and only format every
+  apply-role trust policy in this org is configured for, since the
+  2026-10 redesign dropped the branch-ref fallback):
+  `repo:melvyndekort@<owner_id>/<repo>@<repo_id>:environment:production`.
+  Trust is scoped to a job declaring `environment: production`, not to
+  `main` or any other branch name directly.
 
 Every IAM trust policy created by `oidc_role` (tf-github) and
 `account-bootstrap` (tf-aws, for `github-actions-tf-github` itself) is
-built from the immutable-subject format, using owner_id/repo_id passed in as
-plain Terraform variables (no GitHub provider call from `tf-aws`, which has
-none configured).
+built from the immutable-subject, environment-pinned format, using
+owner_id/repo_id passed in as plain Terraform variables (no GitHub provider
+call from `tf-aws`, which has none configured). The read-only PR-plan role
+variant uses the `pull_request` subject instead (not `environment:production`),
+gated additionally by an exact `job_workflow_ref` match — see tf-github's
+`oidc_role/main.tf`.
 
 **If OIDC assumption fails with `Not authorized to perform
 sts:AssumeRoleWithWebIdentity`**, don't assume the trust policy is
@@ -215,7 +223,7 @@ format" below).
 
 3. Merge `all_role_arns` to include the new module's output.
 
-4. Add workload repositories to `repositories.yaml` with `aws_account: "<id>"`.
+4. Add workload repositories to `repos/<name>.yaml` with `aws_account: "<id>"`.
 
 ### In the workload repo
 
@@ -226,6 +234,6 @@ Configure `providers.tf` to use the subaccount's state bucket and no `assume_rol
 - **No long-lived credentials** — all CI/CD uses OIDC with short-lived tokens
 - **Least privilege role chaining** — each repo gets its own IAM role, scoped to a single account
 - **Organization boundary enforcement** — cross-account trust policies verify `aws:PrincipalOrgID`
-- **Branch restriction** — OIDC subject claims are locked to `refs/heads/main`, using the immutable-subject format (see "GitHub OIDC subject format" above)
+- **Environment restriction** — apply-role OIDC subject claims are locked to the `production` GitHub Environment (`:environment:production`), not a branch ref, using the immutable-subject format (see "GitHub OIDC subject format" above)
 - **MFA enforcement** — all human access requires MFA or hardware key authentication
 - **Bootstrap isolation** — `OrganizationAccountAccessRole` is only used during initial account setup, never by workload repos

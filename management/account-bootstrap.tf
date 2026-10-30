@@ -16,6 +16,43 @@ resource "aws_iam_role_policy" "admin_ec2_deny" {
   policy = data.aws_iam_policy_document.ec2_deny.json
 }
 
+# tf-aws's own read-only PR-plan role. Looked up by name rather than by a
+# Terraform reference because it is NOT created here -- it comes from
+# tf-github's generic oidc_role module, opted in via `aws_plan_role: true`
+# in tf-github's repos/tf-aws.yaml. Apply order across repos: tf-github
+# creates this role first (it must exist in AWS before this data source
+# resolves), then this grant can attach.
+data "aws_iam_role" "tf_aws_plan" {
+  name = "github-actions-tf-aws-plan"
+}
+
+# Management-only grant for tf-aws's own plan role: it must additionally
+# assume the read-only TerraformPlanRole in each subaccount tf-aws plans
+# (accounts/hermes-agent, accounts/network-monitor), the same shape as the
+# tf-github-plan grant below. ReadOnlyAccess does not include sts:AssumeRole,
+# so this is required for the subaccounts PR-plan job's provider to assume
+# TerraformPlanRole instead of the admin OrganizationAccountAccessRole.
+data "aws_iam_policy_document" "tf_aws_plan_assume_subaccounts" {
+  statement {
+    sid       = "AssumeSubaccountPlanRoles"
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = ["arn:aws:iam::*:role/TerraformPlanRole"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:PrincipalOrgID"
+      values   = [aws_organizations_organization.organization.id]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "tf_aws_plan_assume_subaccounts" {
+  name   = "assume-subaccount-plan-roles"
+  role   = data.aws_iam_role.tf_aws_plan.name
+  policy = data.aws_iam_policy_document.tf_aws_plan_assume_subaccounts.json
+}
+
 # Management-only grants for the tf-github plan role. Same shape as the
 # admin_ec2_deny attachment above: the module creates the role in every
 # account, the management account adds what only it needs.

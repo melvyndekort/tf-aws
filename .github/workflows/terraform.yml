@@ -1,3 +1,16 @@
+# Split per the gha-workflows reusable-workflow pattern tf-github already
+# uses: credential-free validate + read-only PR plan (no environment gate,
+# so it actually runs on a pull_request ref) for PRs, environment-gated
+# admin apply for pushes to main.
+#
+# Why this file is still bespoke rather than a thin caller like tf-github's
+# terraform-pr.yml/terraform-apply.yml: this repo plans/applies TWO kinds of
+# working directory -- the management/ root module directly, and a matrix of
+# accounts/<name>/ subaccount modules whose provider must assume a
+# cross-account role (TerraformPlanRole for plan, OrganizationAccountAccessRole
+# for apply -- see accounts/*/providers.tf's subaccount_role_name variable).
+# The shared workflows still do the actual credential handling and plan/apply
+# steps; this file only adds the extra job split and the TF_VAR override.
 name: Deploy Infrastructure
 
 on:
@@ -19,173 +32,103 @@ on:
       - '.github/workflows/terraform.yml'
   workflow_dispatch:
 
-permissions:
-  id-token: write
-  contents: read
-  pull-requests: write
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: true
 
+# Permissions do NOT inherit into a reusable workflow: a called workflow can
+# only narrow what the caller granted, never widen it. Without the explicit
+# permissions block on each job below, the run is refused before any job
+# starts, with `startup_failure` and no log.
 jobs:
-  management:
+  management-validate:
     if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    # The apply role (github-actions-tf-aws) trusts only the
-    # `:environment:production` OIDC subject; without this the job's subject is
-    # `:ref:refs/heads/main` and AssumeRoleWithWebIdentity is denied.
-    environment: production
-    defaults:
-      run:
-        working-directory: management
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+    permissions:
+      contents: read
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-validate.yml@v1
+    with:
+      working-directory: management
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: eu-west-1
+  management-plan:
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    needs: management-validate
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-plan.yml@v1
+    with:
+      working-directory: management
+      comment-title: "Management Account"
+    secrets:
+      plan-role-arn: ${{ secrets.AWS_PLAN_ROLE_ARN }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+  management-apply:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.actor != 'dependabot[bot]'
+    permissions:
+      id-token: write
+      contents: read
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-apply.yml@v1
+    with:
+      working-directory: management
+      environment: production
+    secrets:
+      role-arn: ${{ secrets.AWS_ROLE_ARN }}
 
-      - name: Terraform Format
-        id: fmt
-        run: terraform fmt -check
-
-      - name: Terraform Init
-        id: init
-        run: terraform init
-
-      - name: Terraform Validate
-        id: validate
-        run: terraform validate -no-color
-
-      - name: Terraform Plan
-        id: plan
-        if: github.event_name == 'pull_request'
-        run: terraform plan -no-color -input=false
-        continue-on-error: true
-
-      - uses: actions/github-script@v9
-        if: github.event_name == 'pull_request'
-        env:
-          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const output = `#### Management Account
-            #### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
-            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
-            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
-            <details><summary>Show Plan</summary>
-            \`\`\`\n
-            ${process.env.PLAN}
-            \`\`\`
-            </details>
-            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
-
-      - name: Terraform Plan Status
-        if: steps.plan.outcome == 'failure'
-        run: exit 1
-
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        run: terraform apply -auto-approve -input=false
-
-  subaccounts:
+  subaccounts-validate:
     if: github.actor != 'dependabot[bot]'
-    needs: management
-    runs-on: ubuntu-latest
-    environment: production
     strategy:
       matrix:
         include:
           - account: network-monitor
-            account_id: "844347863910"
           - account: hermes-agent
-            account_id: "520519513359"
-    defaults:
-      run:
-        working-directory: accounts/${{ matrix.account }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+    permissions:
+      contents: read
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-validate.yml@v1
+    with:
+      working-directory: accounts/${{ matrix.account }}
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: eu-west-1
+  subaccounts-plan:
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    needs:
+      - management-plan
+      - subaccounts-validate
+    strategy:
+      matrix:
+        include:
+          - account: network-monitor
+          - account: hermes-agent
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-plan.yml@v1
+    with:
+      working-directory: accounts/${{ matrix.account }}
+      comment-title: "Account: ${{ matrix.account }}"
+      # The default provider role in accounts/<name>/providers.tf is the
+      # admin OrganizationAccountAccessRole (used at apply time). Point it at
+      # the read-only TerraformPlanRole for the duration of this plan instead
+      # -- same idiom tf-github's own terraform-pr.yml uses for its
+      # subaccount_role_name variable.
+      tf-vars: TF_VAR_subaccount_role_name=TerraformPlanRole
+    secrets:
+      plan-role-arn: ${{ secrets.AWS_PLAN_ROLE_ARN }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-
-      - name: Terraform Format
-        id: fmt
-        run: terraform fmt -check
-
-      - name: Create provider override for role assumption
-        run: |
-          cat > providers_override.tf <<EOF
-          provider "aws" {
-            region = "eu-west-1"
-            assume_role {
-              role_arn = "arn:aws:iam::${{ matrix.account_id }}:role/OrganizationAccountAccessRole"
-            }
-          }
-          EOF
-          terraform fmt providers_override.tf
-
-      - name: Terraform Init
-        id: init
-        run: terraform init
-
-      - name: Terraform Validate
-        id: validate
-        run: terraform validate -no-color
-
-      - name: Terraform Plan
-        id: plan
-        if: github.event_name == 'pull_request'
-        run: terraform plan -no-color -input=false
-        continue-on-error: true
-
-      - uses: actions/github-script@v9
-        if: github.event_name == 'pull_request'
-        env:
-          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const output = `#### Account: ${{ matrix.account }}
-            #### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
-            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
-            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
-            <details><summary>Show Plan</summary>
-            \`\`\`\n
-            ${process.env.PLAN}
-            \`\`\`
-            </details>
-            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
-
-      - name: Terraform Plan Status
-        if: steps.plan.outcome == 'failure'
-        run: exit 1
-
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        run: terraform apply -auto-approve -input=false
+  subaccounts-apply:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.actor != 'dependabot[bot]'
+    needs: management-apply
+    strategy:
+      matrix:
+        include:
+          - account: network-monitor
+          - account: hermes-agent
+    permissions:
+      id-token: write
+      contents: read
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-apply.yml@v1
+    with:
+      working-directory: accounts/${{ matrix.account }}
+      environment: production
+    secrets:
+      role-arn: ${{ secrets.AWS_ROLE_ARN }}

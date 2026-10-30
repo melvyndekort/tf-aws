@@ -38,3 +38,31 @@ resource "aws_iam_role_policy" "eventbridge_notifications" {
     ]
   })
 }
+
+# Allows every subaccount's own eventbridge-oidc-notifications-role (created
+# by the account-bootstrap module, tf-github improvement plan Phase 2 item 2)
+# to publish cross-account to this one shared topic, instead of giving every
+# subaccount its own SNS topic. Same org-wide-trust shape already used for
+# the state bucket's read policy (aws:PrincipalOrgID, no narrower principal
+# list to maintain per-account).
+resource "aws_sns_topic_policy" "notifications_org_publish" {
+  arn = aws_sns_topic.notifications.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowOrgPublish"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "sns:Publish"
+        Resource  = aws_sns_topic.notifications.arn
+        Condition = {
+          StringEquals = {
+            "aws:PrincipalOrgID" = aws_organizations_organization.organization.id
+          }
+        }
+      }
+    ]
+  })
+}

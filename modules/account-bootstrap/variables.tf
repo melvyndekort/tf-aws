@@ -58,3 +58,17 @@ variable "plan_job_workflow_refs" {
   default = ["melvyndekort/gha-workflows/.github/workflows/terraform-pr-plan.yml@*"]
 }
 
+variable "notifications_sns_topic_arn" {
+  description = <<-EOT
+    ARN of the SNS topic to publish github-actions-* AssumeRoleWithWebIdentity
+    alerts to (tf-github improvement plan Phase 2 item 2). May be a
+    cross-account ARN (e.g. the management account's shared notifications
+    topic) -- the topic's own resource policy must allow this account's
+    eventbridge-oidc-notifications-role to publish. Empty string skips
+    creating the monitoring resources (e.g. for an account with no
+    notifications topic wired up yet).
+  EOT
+  type        = string
+  default     = ""
+}
+

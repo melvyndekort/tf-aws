@@ -10,28 +10,26 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 # tf-github Role
+#
+# Trust-policy shape (immutable-subject, environment-pinned OIDC federation)
+# shared with tf-github's own oidc_role module via gha-workflows'
+# oidc-github-trust-policy module -- see that module's README. The
+# cross-account self-reference statement below is specific to this role
+# (tf-github provisions its own apply role in every OTHER account, so it
+# needs to assume itself cross-account while bootstrapping those), so it's
+# merged in here rather than folded into the shared module.
+module "tf_github_trust" {
+  source = "git::https://github.com/melvyndekort/gha-workflows.git//modules/oidc-github-trust-policy?ref=feat/oidc-trust-policy-module"
+
+  oidc_provider_arn = aws_iam_openid_connect_provider.github.arn
+  github_org        = "melvyndekort"
+  github_owner_id   = var.tf_github_owner_id
+  repo_name         = "tf-github"
+  repo_id           = var.tf_github_repo_id
+}
+
 data "aws_iam_policy_document" "tf_github_assume" {
-  statement {
-    actions = ["sts:AssumeRoleWithWebIdentity"]
-    principals {
-      type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:aud"
-      values   = ["sts.amazonaws.com"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        # Immutable-subject format (embeds owner_id/repo_id), GitHub's
-        # current default for newly created repos.
-        "repo:melvyndekort@${var.tf_github_owner_id}/tf-github@${var.tf_github_repo_id}:environment:production",
-      ]
-    }
-  }
+  source_policy_documents = [module.tf_github_trust.apply_assume_role_policy_json]
 
   statement {
     actions = ["sts:AssumeRole"]
@@ -106,36 +104,25 @@ resource "aws_iam_policy" "terraform_github_boundary" {
 # Lives here rather than in tf-github to avoid a circular dependency: a plan
 # role created by tf-github would only exist after a tf-github apply, so a PR
 # that broke the plan could not be fixed by a PR.
+#
+# Trust-policy shape shared via the same oidc-github-trust-policy module as
+# the apply role above; the cross-account self-reference statement is merged
+# in the same way.
+module "tf_github_plan_trust" {
+  source = "git::https://github.com/melvyndekort/gha-workflows.git//modules/oidc-github-trust-policy?ref=feat/oidc-trust-policy-module"
+
+  oidc_provider_arn      = aws_iam_openid_connect_provider.github.arn
+  github_org             = "melvyndekort"
+  github_owner_id        = var.tf_github_owner_id
+  repo_name              = "tf-github"
+  repo_id                = var.tf_github_repo_id
+  create_apply_document  = false
+  create_plan_document   = true
+  plan_job_workflow_refs = var.plan_job_workflow_refs
+}
+
 data "aws_iam_policy_document" "tf_github_plan_assume" {
-  statement {
-    actions = ["sts:AssumeRoleWithWebIdentity"]
-    principals {
-      type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:aud"
-      values   = ["sts.amazonaws.com"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        # Same immutable-subject format as the apply role, but :pull_request
-        # instead of a branch ref - that mismatch is why PR runs used to fail.
-        "repo:melvyndekort@${var.tf_github_owner_id}/tf-github@${var.tf_github_repo_id}:pull_request",
-      ]
-    }
-    condition {
-      # The apply role needs no equivalent: it is reachable only from main,
-      # which is already review-gated. A PR can contain arbitrary workflow
-      # code, so this pins the role to the reviewed shared plan workflow.
-      test     = "StringLike"
-      variable = "token.actions.githubusercontent.com:job_workflow_ref"
-      values   = var.plan_job_workflow_refs
-    }
-  }
+  source_policy_documents = [module.tf_github_plan_trust.plan_assume_role_policy_json]
 
   statement {
     actions = ["sts:AssumeRole"]
@@ -344,4 +331,87 @@ resource "aws_s3_bucket_policy" "tfstate_org_read" {
       }
     }]
   })
+}
+
+# ---------------------------------------------------------------------------
+# OIDC-assumption monitoring (tf-github improvement plan Phase 2 item 2)
+#
+# Finding 1 (security audit) accepts that every github-actions-* role is
+# effectively AdministratorAccess, fleet-wide, with no narrower-scope retry
+# planned (canaried, reverted, Melvyn's call -- see the plan's §2 "explicitly
+# deferred"). Detection is therefore the only compensating control left:
+# alert on every AssumeRoleWithWebIdentity against a github-actions-* role in
+# every account, not just management.
+#
+# Each account gets its own rule (CloudTrail/EventBridge events are
+# account+region-local; there's no org trail aggregating them onto one bus
+# today), but publishes to the single SNS topic already used for every other
+# notification -- cross-account to the management account's topic for
+# subaccounts, same-account for the management account itself. This mirrors
+# the existing `tf_github_ref_based_assume` rule in
+# management/notifications-monitoring.tf (now a strict subset of this one)
+# rather than inventing a second notification path.
+resource "aws_iam_role" "eventbridge_oidc_notifications" {
+  count = var.notifications_sns_topic_arn != "" ? 1 : 0
+
+  name = "eventbridge-oidc-notifications-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "eventbridge_oidc_notifications" {
+  count = var.notifications_sns_topic_arn != "" ? 1 : 0
+
+  name = "eventbridge-oidc-notifications-policy"
+  role = aws_iam_role.eventbridge_oidc_notifications[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["sns:Publish"]
+        Resource = var.notifications_sns_topic_arn
+      }
+    ]
+  })
+}
+
+resource "aws_cloudwatch_event_rule" "github_actions_assume_role" {
+  count = var.notifications_sns_topic_arn != "" ? 1 : 0
+
+  name        = "github-actions-assume-role-notifications"
+  description = "Alert on AssumeRoleWithWebIdentity against any github-actions-* role in this account (every such role is effectively AdministratorAccess; detection is the compensating control)"
+
+  event_pattern = jsonencode({
+    "source" : ["aws.sts"],
+    "detail-type" : ["AWS API Call via CloudTrail"],
+    "detail" : {
+      "eventSource" : ["sts.amazonaws.com"],
+      "eventName" : ["AssumeRoleWithWebIdentity"],
+      "requestParameters" : {
+        "roleArn" : [{ "wildcard" : "*role/external/github-actions-*" }]
+      }
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "github_actions_assume_role" {
+  count = var.notifications_sns_topic_arn != "" ? 1 : 0
+
+  rule      = aws_cloudwatch_event_rule.github_actions_assume_role[0].name
+  target_id = "GithubActionsAssumeRoleNotificationsTarget"
+  arn       = var.notifications_sns_topic_arn
+  role_arn  = aws_iam_role.eventbridge_oidc_notifications[0].arn
 }

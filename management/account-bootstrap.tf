@@ -4,10 +4,11 @@ data "aws_caller_identity" "current" {}
 module "account_bootstrap" {
   source = "../modules/account-bootstrap"
 
-  management_account_id = data.aws_caller_identity.current.account_id
-  organization_id       = aws_organizations_organization.organization.id
-  melvyn_user_arn       = aws_iam_user.melvyn.arn
-  yubikey_role_arn      = aws_iam_role.yubikey_role.arn
+  management_account_id       = data.aws_caller_identity.current.account_id
+  organization_id             = aws_organizations_organization.organization.id
+  melvyn_user_arn             = aws_iam_user.melvyn.arn
+  yubikey_role_arn            = aws_iam_role.yubikey_role.arn
+  notifications_sns_topic_arn = aws_sns_topic.notifications.arn
 }
 
 # EC2 regional restriction for AdminRole

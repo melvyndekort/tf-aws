@@ -6,6 +6,10 @@ updates:
     schedule:
       interval: "weekly"
     rebase-strategy: "auto"
+    groups:
+      github-actions-root:
+        patterns:
+          - "*"
     assignees:
       - "melvyndekort"
     reviewers:
@@ -16,6 +20,10 @@ updates:
     schedule:
       interval: "weekly"
     rebase-strategy: "auto"
+    groups:
+      terraform-management:
+        patterns:
+          - "*"
     assignees:
       - "melvyndekort"
     reviewers:
@@ -26,6 +34,10 @@ updates:
     schedule:
       interval: "weekly"
     rebase-strategy: "auto"
+    groups:
+      terraform-accounts-network-monitor:
+        patterns:
+          - "*"
     assignees:
       - "melvyndekort"
     reviewers:

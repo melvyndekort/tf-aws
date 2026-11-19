@@ -19,7 +19,7 @@ resource "aws_iam_openid_connect_provider" "github" {
 # needs to assume itself cross-account while bootstrapping those), so it's
 # merged in here rather than folded into the shared module.
 module "tf_github_trust" {
-  source = "git::https://github.com/melvyndekort/gha-workflows.git//modules/oidc-github-trust-policy?ref=feat/oidc-trust-policy-module"
+  source = "git::https://github.com/melvyndekort/gha-workflows.git//modules/oidc-github-trust-policy?ref=v2"
 
   oidc_provider_arn = aws_iam_openid_connect_provider.github.arn
   github_org        = "melvyndekort"
@@ -109,7 +109,7 @@ resource "aws_iam_policy" "terraform_github_boundary" {
 # the apply role above; the cross-account self-reference statement is merged
 # in the same way.
 module "tf_github_plan_trust" {
-  source = "git::https://github.com/melvyndekort/gha-workflows.git//modules/oidc-github-trust-policy?ref=feat/oidc-trust-policy-module"
+  source = "git::https://github.com/melvyndekort/gha-workflows.git//modules/oidc-github-trust-policy?ref=v2"
 
   oidc_provider_arn      = aws_iam_openid_connect_provider.github.arn
   github_org             = "melvyndekort"

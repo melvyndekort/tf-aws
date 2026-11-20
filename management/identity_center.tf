@@ -90,3 +90,19 @@ resource "aws_ssoadmin_account_assignment" "read_only" {
   target_id   = each.value
   target_type = "AWS_ACCOUNT"
 }
+
+# Delegated administration — registers aws-idc-pim as the IAM Identity
+# Center delegated admin. From here on, most Identity Center admin API
+# calls (incl. create/delete-account-assignment for workload accounts, the
+# core operation of the planned JIT elevation bot) can run from aws-idc-pim
+# instead of the management account. AWS hard-restricts the delegated admin
+# from managing assignments/permission sets targeting the management
+# account itself — that case stays handled separately, via a narrow
+# cross-account role rather than by granting this account broader reach.
+# sso.amazonaws.com is already an enabled trusted service (see
+# aws_organizations_organization.organization in organizations.tf), so no
+# further Organizations-level prerequisite is needed.
+resource "aws_organizations_delegated_administrator" "aws_idc_pim" {
+  account_id        = module.aws_idc_pim.account_id
+  service_principal = "sso.amazonaws.com"
+}

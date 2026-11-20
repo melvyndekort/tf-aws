@@ -82,6 +82,7 @@ jobs:
         include:
           - account: network-monitor
           - account: hermes-agent
+          - account: aws-idc-pim
     permissions:
       contents: read
     uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-validate.yml@v1
@@ -98,6 +99,7 @@ jobs:
         include:
           - account: network-monitor
           - account: hermes-agent
+          - account: aws-idc-pim
     permissions:
       id-token: write
       contents: read
@@ -123,6 +125,7 @@ jobs:
         include:
           - account: network-monitor
           - account: hermes-agent
+          - account: aws-idc-pim
     permissions:
       id-token: write
       contents: read

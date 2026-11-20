@@ -19,4 +19,12 @@ terraform {
 
 provider "aws" {
   region = "eu-west-1"
+
+  # Role assumed cross-account differs by trigger: applies use the admin
+  # OrganizationAccountAccessRole (default), PR plans override it to the
+  # read-only TerraformPlanRole via TF_VAR_subaccount_role_name, set by the
+  # terraform-pr-plan.yml reusable workflow. See variables.tf.
+  assume_role {
+    role_arn = "arn:aws:iam::844347863910:role/${var.subaccount_role_name}"
+  }
 }

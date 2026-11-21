@@ -59,13 +59,36 @@ data "aws_iam_policy_document" "idc_pim_root_elevation_permissions" {
   statement {
     sid    = "ManageAdministratorAccessAssignments"
     effect = "Allow"
+    # "sso:" prefix, not "sso-admin:", despite calling these via the boto3
+    # "sso-admin" client -- see aws-idc-pim's terraform/iam.tf for the full
+    # explanation (confirmed live via AccessDeniedException naming
+    # "sso:ListInstances" explicitly; AWS's Service Authorization Reference
+    # for "AWS IAM Identity Center" agrees -- prefix sso, no separate
+    # "sso-admin" IAM namespace for these operations).
     actions = [
-      "sso-admin:CreateAccountAssignment",
-      "sso-admin:DeleteAccountAssignment",
-      "sso-admin:DescribeAccountAssignmentCreationStatus",
-      "sso-admin:DescribeAccountAssignmentDeletionStatus",
+      "sso:CreateAccountAssignment",
+      "sso:DeleteAccountAssignment",
+      "sso:DescribeAccountAssignmentCreationStatus",
+      "sso:DescribeAccountAssignmentDeletionStatus",
     ]
     resources = [aws_ssoadmin_permission_set.administrator.arn]
+  }
+
+  # Read-only discovery the elevate()/revoke() flow also needs under this
+  # same assumed role (checking for an existing assignment, resolving the
+  # permission set by name) -- not scoped to the one permission set ARN
+  # like the statement above, because ListPermissionSets/ListAccountAssignments
+  # require the Instance resource type, not the PermissionSet one, and the
+  # instance ARN isn't known without a separate lookup. Read-only, low risk.
+  statement {
+    sid    = "DiscoverPermissionSetAndAssignments"
+    effect = "Allow"
+    actions = [
+      "sso:ListAccountAssignments",
+      "sso:ListPermissionSets",
+      "sso:DescribePermissionSet",
+    ]
+    resources = ["*"]
   }
 
   statement {

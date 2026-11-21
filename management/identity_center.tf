@@ -18,9 +18,8 @@ locals {
   sso_identity_store_id = tolist(data.aws_ssoadmin_instances.this.identity_store_ids)[0]
 
   identity_center_accounts = {
-    management      = data.aws_caller_identity.current.account_id
-    hermes_agent    = module.hermes_agent.account_id
-    network_monitor = module.network_monitor.account_id
+    for acct in aws_organizations_organization.organization.accounts :
+    acct.id => acct.id if acct.status == "ACTIVE"
   }
 }
 

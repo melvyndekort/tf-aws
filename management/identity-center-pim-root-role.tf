@@ -13,8 +13,10 @@
 # elsewhere in this file: a hardcoded ARN string, not a live dependency, so
 # apply order between the two repos doesn't matter.
 #
-# Scoped to exactly the AdministratorAccess permission set ARN -- this role
-# cannot touch ReadOnlyAccess or any future permission set. It is NOT scoped
+# Scoped to exactly the AdministratorAccessJIT permission set ARN -- this
+# role cannot touch ReadOnlyAccess, the standing AdministratorAccess
+# permission set (used by the aws-users group's everyday access), or any
+# future permission set. It is NOT scoped
 # to a specific target_id (IAM Identity Center's sso-admin API has no
 # documented resource-level condition key for the assignment's target
 # account), so in principle this role's holder could assign AdministratorAccess
@@ -80,7 +82,7 @@ data "aws_iam_policy_document" "idc_pim_root_elevation_permissions" {
     # AdministratorAccess permission set.
     resources = [
       local.sso_instance_arn,
-      aws_ssoadmin_permission_set.administrator.arn,
+      aws_ssoadmin_permission_set.administrator_jit.arn,
       "arn:aws:sso:::account/${data.aws_caller_identity.current.account_id}",
     ]
   }

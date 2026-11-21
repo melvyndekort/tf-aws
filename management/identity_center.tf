@@ -50,11 +50,7 @@ resource "aws_ssoadmin_managed_policy_attachment" "read_only" {
   managed_policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
 }
 
-# ACCOUNT ASSIGNMENTS — ReadOnlyAccess standing for every account, aws-users
-# group. Standing AdministratorAccess was removed 2026-11-21 once
-# aws-idc-pim's JIT elevation bot (AdministratorAccessJIT permission set,
-# Discord /aws-elevate and /aws-revoke) was proven working end-to-end --
-# no more permanently-standing admin access anywhere.
+# ACCOUNT ASSIGNMENTS — ReadOnlyAccess standing for every account, aws-users group
 
 resource "aws_ssoadmin_account_assignment" "read_only" {
   for_each = local.identity_center_accounts

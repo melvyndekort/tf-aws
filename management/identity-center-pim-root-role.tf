@@ -71,7 +71,18 @@ data "aws_iam_policy_document" "idc_pim_root_elevation_permissions" {
       "sso:DescribeAccountAssignmentCreationStatus",
       "sso:DescribeAccountAssignmentDeletionStatus",
     ]
-    resources = [aws_ssoadmin_permission_set.administrator.arn]
+    # Also confirmed live: sso-admin's multi-resource actions (this one
+    # needs Instance + PermissionSet + Account) reject a bare "*" --
+    # AWS's own example policies always list all three resource types
+    # explicitly (see aws-idc-pim's terraform/iam.tf for the full
+    # explanation and the source). Scoped to exactly the management
+    # account (this role's only legitimate target) and the
+    # AdministratorAccess permission set.
+    resources = [
+      local.sso_instance_arn,
+      aws_ssoadmin_permission_set.administrator.arn,
+      "arn:aws:sso:::account/${data.aws_caller_identity.current.account_id}",
+    ]
   }
 
   # Read-only discovery the elevate()/revoke() flow also needs under this

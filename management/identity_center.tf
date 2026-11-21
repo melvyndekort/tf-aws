@@ -37,19 +37,6 @@ data "aws_identitystore_group" "aws_users" {
 
 # PERMISSION SETS
 
-resource "aws_ssoadmin_permission_set" "administrator" {
-  name             = "AdministratorAccess"
-  description      = "Full administrator access (Authentik SSO)"
-  instance_arn     = local.sso_instance_arn
-  session_duration = "PT4H"
-}
-
-resource "aws_ssoadmin_managed_policy_attachment" "administrator" {
-  instance_arn       = local.sso_instance_arn
-  permission_set_arn = aws_ssoadmin_permission_set.administrator.arn
-  managed_policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-}
-
 resource "aws_ssoadmin_permission_set" "read_only" {
   name             = "ReadOnlyAccess"
   description      = "Read-only access (Authentik SSO)"
@@ -63,20 +50,11 @@ resource "aws_ssoadmin_managed_policy_attachment" "read_only" {
   managed_policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
 }
 
-# ACCOUNT ASSIGNMENTS — both permission sets, every account, aws-users group
-
-resource "aws_ssoadmin_account_assignment" "administrator" {
-  for_each = local.identity_center_accounts
-
-  instance_arn       = local.sso_instance_arn
-  permission_set_arn = aws_ssoadmin_permission_set.administrator.arn
-
-  principal_id   = data.aws_identitystore_group.aws_users.group_id
-  principal_type = "GROUP"
-
-  target_id   = each.value
-  target_type = "AWS_ACCOUNT"
-}
+# ACCOUNT ASSIGNMENTS — ReadOnlyAccess standing for every account, aws-users
+# group. Standing AdministratorAccess was removed 2026-11-21 once
+# aws-idc-pim's JIT elevation bot (AdministratorAccessJIT permission set,
+# Discord /aws-elevate and /aws-revoke) was proven working end-to-end --
+# no more permanently-standing admin access anywhere.
 
 resource "aws_ssoadmin_account_assignment" "read_only" {
   for_each = local.identity_center_accounts

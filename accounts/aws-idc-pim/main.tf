@@ -19,3 +19,55 @@ module "account_bootstrap" {
     "arn:aws:iam::${var.management_account_id}:role/external/github-actions-tf-aws-plan",
   ]
 }
+
+# ReadOnlyRole decrypts aws-idc-pim's own secrets for the drift check. The
+# key lives in the management account, so the key policy's org-scoped
+# statement (OrgAccountsScopedToOwnSecrets, target in
+# subaccount_secret_targets) must also allow it -- this identity grant is
+# the other half. ReadOnlyAccess has no kms:Decrypt. Scoped to the one key
+# and the one encryption-context target.
+data "aws_iam_policy_document" "readonly_kms_decrypt" {
+  statement {
+    sid       = "DecryptDriftCheckSecrets"
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [data.terraform_remote_state.management.outputs.generic_kms_key_arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:EncryptionContext:target"
+      values   = ["aws-idc-pim"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "readonly_kms_decrypt" {
+  name   = "kms-decrypt"
+  role   = module.account_bootstrap.readonly_role_name
+  policy = data.aws_iam_policy_document.readonly_kms_decrypt.json
+}
+
+# TerraformPlanRole decrypts aws-idc-pim's own secret for the PR-time plan.
+# Cross-account: the key policy statement OrgAccountsScopedToOwnSecrets
+# already allows org principals for target aws-idc-pim, so no key-policy
+# change beyond adding it to subaccount_secret_targets.
+data "aws_iam_policy_document" "terraform_plan_kms_decrypt" {
+  statement {
+    sid       = "DecryptPlanSecrets"
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [data.terraform_remote_state.management.outputs.generic_kms_key_arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:EncryptionContext:target"
+      values   = ["aws-idc-pim"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "terraform_plan_kms_decrypt" {
+  name   = "kms-decrypt"
+  role   = module.account_bootstrap.terraform_plan_role_name
+  policy = data.aws_iam_policy_document.terraform_plan_kms_decrypt.json
+}

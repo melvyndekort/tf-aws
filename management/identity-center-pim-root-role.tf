@@ -89,6 +89,47 @@ data "aws_iam_policy_document" "idc_pim_root_elevation_permissions" {
     actions   = ["identitystore:ListUsers"]
     resources = ["*"]
   }
+
+  # Creating/deleting an account assignment that TARGETS THE MANAGEMENT
+  # ACCOUNT provisions/deprovisions the permission set's IAM role directly
+  # via the caller's own IAM permissions (unlike a workload account, where
+  # delegated administration's internal service role handles provisioning).
+  # Confirmed live: CreateAccountAssignment accepted and returned IN_PROGRESS,
+  # then failed async with "403 ... iam:GetSAMLProvider ... not authorized"
+  # against the exact SAML provider AWS's own IAM Identity Center docs
+  # describe for this case (sso-admin's management-account restriction
+  # means this path is otherwise invisible until actually exercised against
+  # the management account -- the original end-to-end verification only
+  # covered a workload account target). Matches AWS's documented policy for
+  # "Allow a user to manage permissions to AWS accounts in IAM Identity
+  # Center" (Identity-based policy examples for IAM Identity Center),
+  # specifically the extra statements required "only to enable ... create
+  # assignments in the AWS Organizations management account".
+  statement {
+    sid    = "ProvisionManagementAccountSsoRole"
+    effect = "Allow"
+    actions = [
+      "iam:GetRole",
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:UpdateRole",
+      "iam:UpdateRoleDescription",
+      "iam:AttachRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:PutRolePolicy",
+      "iam:DeleteRolePolicy",
+      "iam:ListRolePolicies",
+      "iam:ListAttachedRolePolicies",
+    ]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-reserved/sso.amazonaws.com/*"]
+  }
+
+  statement {
+    sid       = "ReadManagementAccountSamlProvider"
+    effect    = "Allow"
+    actions   = ["iam:GetSAMLProvider"]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:saml-provider/AWSSSO_*_DO_NOT_DELETE"]
+  }
 }
 
 resource "aws_iam_role_policy" "idc_pim_root_elevation" {

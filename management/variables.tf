@@ -37,5 +37,5 @@ variable "subaccount_secret_targets" {
   EOT
 
   type    = list(string)
-  default = ["hermes-agent", "aws-idc-pim"]
+  default = ["hermes-agent", "aws-idc-pim", "tf-minecraft"]
 }

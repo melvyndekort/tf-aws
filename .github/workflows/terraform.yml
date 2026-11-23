@@ -45,7 +45,7 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     permissions:
       contents: read
-    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-validate.yml@v1
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-validate.yml@v2
     with:
       working-directory: management
 
@@ -56,7 +56,7 @@ jobs:
       id-token: write
       contents: read
       pull-requests: write
-    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-plan.yml@v1
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-plan.yml@v2
     with:
       working-directory: management
       comment-title: "Management Account"
@@ -68,7 +68,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    uses: melvyndekort/gha-workflows/.github/workflows/terraform-apply.yml@v1
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-apply.yml@v2
     with:
       working-directory: management
       environment: production
@@ -86,7 +86,7 @@ jobs:
           - account: minecraft-server
     permissions:
       contents: read
-    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-validate.yml@v1
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-validate.yml@v2
     with:
       working-directory: accounts/${{ matrix.account }}
 
@@ -106,7 +106,7 @@ jobs:
       id-token: write
       contents: read
       pull-requests: write
-    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-plan.yml@v1
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-pr-plan.yml@v2
     with:
       working-directory: accounts/${{ matrix.account }}
       comment-title: "Account: ${{ matrix.account }}"
@@ -132,7 +132,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    uses: melvyndekort/gha-workflows/.github/workflows/terraform-apply.yml@v1
+    uses: melvyndekort/gha-workflows/.github/workflows/terraform-apply.yml@v2
     with:
       working-directory: accounts/${{ matrix.account }}
       environment: production
